@@ -84,6 +84,20 @@ export default function Layout() {
                         headerShown: false
                     }}
                 />
+                <Tabs.Screen
+                    name="stats"
+                    options={{
+                        tabBarButton: () => null,
+                        headerShown: false
+                    }}
+                />
+                <Tabs.Screen
+                    name="activities"
+                    options={{
+                        tabBarButton: () => null,
+                        headerShown: false
+                    }}
+                />
             </Tabs>
         </CharacterProvider>
     );
