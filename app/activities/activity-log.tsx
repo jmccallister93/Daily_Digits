@@ -1,25 +1,35 @@
-// app/(activities)/activity-log.tsx
+// app/activities/activity-log.tsx
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform } from "react-native";
 import { theme } from "../../theme";
 import { useState, useEffect } from "react";
 import { Picker } from "@react-native-picker/picker";
-import { useCharacter } from "../context/CharacterContext"; // FIXED: Corrected import path
+import { useCharacter } from "../context/CharacterContext";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+
+// Define the valid category types for type safety
+type CategoryType = "physical" | "mind" | "spiritual";
 
 export default function ActivityLogScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
-    // Extract category from URL query parameters
-    const category = typeof params.category === 'string' ? params.category : undefined;
 
-    // Add a default fallback if category is undefined
-    const safeCategory = category || "physical";
+    // Extract category from URL query parameters with type assertion
+    const rawCategory = typeof params.category === 'string' ? params.category : undefined;
+
+    // Validate that the category is one of our valid types
+    const isValidCategory = (cat: string | undefined): cat is CategoryType => {
+        return cat === "physical" || cat === "mind" || cat === "spiritual";
+    };
+
+    // Add a default fallback if category is undefined or invalid
+    const safeCategory: CategoryType = isValidCategory(rawCategory) ? rawCategory : "physical";
 
     console.log("Raw params:", JSON.stringify(params));
-    console.log("Category from params:", category);
+    console.log("Category from params:", rawCategory);
     console.log("Using safe category:", safeCategory);
+
     const { characterSheet, logActivity } = useCharacter();
 
     const [activity, setActivity] = useState("");
@@ -28,14 +38,14 @@ export default function ActivityLogScreen() {
     const [errors, setErrors] = useState({ activity: "", stat: "", points: "" });
     const [availableStats, setAvailableStats] = useState<string[]>([]);
 
-    console.log("Current category:", category);
+    console.log("Current category:", rawCategory);
     console.log("Character sheet:", characterSheet);
 
     // Set up available stats based on category
     useEffect(() => {
         try {
-            // Always use the safeCategory to prevent undefined issues
-            const stats = characterSheet[safeCategory].stats.map((stat: any) => stat.name);
+            // Now TypeScript knows that safeCategory is a valid key
+            const stats = characterSheet[safeCategory].stats.map(stat => stat.name);
             console.log(`Stats for ${safeCategory}:`, stats);
             setAvailableStats(stats);
 
@@ -109,7 +119,7 @@ export default function ActivityLogScreen() {
 
         logActivity(
             activity,
-            safeCategory, // Use safeCategory instead of category
+            safeCategory,
             selectedStat,
             parseInt(points)
         );
@@ -137,7 +147,7 @@ export default function ActivityLogScreen() {
         return (
             <View style={styles.debugContainer}>
                 <Text style={styles.debugTitle}>Debug Info:</Text>
-                <Text>Raw category param: {category || "none"}</Text>
+                <Text>Raw category param: {rawCategory || "none"}</Text>
                 <Text>Safe category: {safeCategory}</Text>
                 <Text>Available Stats: {availableStats.length > 0 ? availableStats.join(", ") : "none"}</Text>
                 <Text>Selected Stat: {selectedStat || "none"}</Text>
@@ -167,7 +177,7 @@ export default function ActivityLogScreen() {
 
                 <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollContainer}>
                     {/* Debug information to help diagnose the issue */}
-                    {debugInfo()}
+                    {/* {debugInfo()} */}
 
                     <View style={styles.card}>
                         <View style={styles.formGroup}>

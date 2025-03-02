@@ -11,22 +11,25 @@ export default function Layout() {
             <Tabs
                 screenOptions={{
                     tabBarActiveTintColor: theme.colorPrimary,
-                    tabBarInactiveTintColor: theme.colorTextLight,
+                    tabBarInactiveTintColor: theme.colorTextSecondary,
                     tabBarStyle: {
                         backgroundColor: theme.colorCard,
                         borderTopColor: theme.colorBorder,
                         elevation: 8,
                         shadowColor: "#000",
                         shadowOffset: { width: 0, height: -3 },
-                        shadowOpacity: 0.1,
+                        shadowOpacity: 0.3,
                         shadowRadius: 4,
                         height: 60,
                         paddingBottom: 6,
                         paddingTop: 6,
+                        justifyContent: "space-evenly"
                     },
                     tabBarLabelStyle: {
                         fontSize: 12,
                         fontWeight: '500',
+                        color: theme.colorText, // Make labels white
+
                     },
                     headerShown: false,
                 }}
@@ -87,17 +90,20 @@ export default function Layout() {
                 <Tabs.Screen
                     name="stats"
                     options={{
-                        tabBarButton: () => null,
+                        href: null,
+                        // tabBarButton: () => null,
                         headerShown: false
                     }}
                 />
                 <Tabs.Screen
                     name="activities"
                     options={{
-                        tabBarButton: () => null,
+                        // tabBarButton: () => null,
+                        href: null,
                         headerShown: false
                     }}
                 />
+
             </Tabs>
         </CharacterProvider>
     );
