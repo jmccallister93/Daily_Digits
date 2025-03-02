@@ -1,149 +1,193 @@
-import { StyleSheet, TextInput, FlatList, View, Text } from "react-native";
+// app/index.tsx
+import { StyleSheet, View, Text, TouchableOpacity } from "react-native";
 import { theme } from "../theme";
-import { ShoppingListItem } from "../components/ShoppingListItem";
-import { useEffect, useState } from "react";
-import { getFromStorage, saveToStorage } from "../utils/storage";
-
-const storageKey = "shopping-list";
-
-type ShoppingListItemType = {
-  id: string;
-  name: string;
-  completedAtTimestamp?: number;
-  lastUpdatedTimestamp: number;
-};
+import { useRouter } from "expo-router";
+import { useCharacter } from "./context/CharacterContext";
+import { LinearGradient } from "expo-linear-gradient";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function App() {
-  const [shoppingList, setShoppingList] = useState<ShoppingListItemType[]>([]);
-  const [value, setValue] = useState<string>();
+  const { characterSheet } = useCharacter();
+  const router = useRouter();
 
-  useEffect(() => {
-    const fetchInitial = async () => {
-      const data = await getFromStorage(storageKey);
-      if (data) {
-        setShoppingList(data);
-      }
-    };
+  const handleBoxPress = (category: "physical" | "mind" | "spiritual") => {
+    // Using direct string paths with the correct folder structure
+    const path = category === "physical"
+      ? "/stats/physical-stats" // Keep the typo to match your file
+      : `/stats/${category}-stats`;
 
-    fetchInitial();
-  }, []);
+    console.log("Navigating to:", path);
+    router.push(path);
+  };
 
-  const handleSubmit = () => {
-    if (value) {
-      const newShoppingList = [
-        {
-          id: new Date().toISOString(),
-          name: value,
-          lastUpdatedTimestamp: Date.now(),
-        },
-        ...shoppingList,
-      ];
-      setShoppingList(newShoppingList);
-      saveToStorage(storageKey, newShoppingList);
-      setValue(undefined);
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'physical':
+        return '💪';
+      case 'mind':
+        return '🧠';
+      case 'spiritual':
+        return '✨';
+      default:
+        return '📊';
     }
-  };
-
-  const handleDelete = (id: string) => {
-    const newShoppingList = shoppingList.filter((item) => item.id !== id);
-    setShoppingList(newShoppingList);
-  };
-
-  const handleToggleComplete = (id: string) => {
-    const newShoppingList = shoppingList.map((item) => {
-      if (item.id === id) {
-        return {
-          ...item,
-          completedAtTimestamp: item.completedAtTimestamp
-            ? undefined
-            : Date.now(),
-          lastUpdatedTimestamp: Date.now(),
-        };
-      } else {
-        return item;
-      }
-    });
-    saveToStorage(storageKey, newShoppingList);
-    setShoppingList(newShoppingList);
   };
 
   return (
-    <FlatList
-      ListHeaderComponent={
-        <TextInput
-          value={value}
-          style={styles.textInput}
-          onChangeText={setValue}
-          placeholder="E.g Coffee"
-          onSubmitEditing={handleSubmit}
-          returnKeyType="done"
-        />
-      }
-      ListEmptyComponent={
-        <View style={styles.listEmptyContainer}>
-          <Text>Your shopping list is empty</Text>
-        </View>
-      }
-      data={orderShoppingList(shoppingList)}
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      stickyHeaderIndices={[0]}
-      renderItem={({ item }) => (
-        <ShoppingListItem
-          name={item.name}
-          onDelete={() => handleDelete(item.id)}
-          onToggleComplete={() => handleToggleComplete(item.id)}
-          isCompleted={Boolean(item.completedAtTimestamp)}
-        />
-      )}
-    ></FlatList>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Character Sheet</Text>
+        <Text style={styles.subtitle}>Track your personal development</Text>
+      </View>
+
+      <View style={styles.cardsContainer}>
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => handleBoxPress("physical")}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#6366F1', '#8B5CF6'] as [string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.cardGradient}
+          >
+            <View style={styles.iconContainer}>
+              <Text style={styles.emoji}>{getCategoryIcon('physical')}</Text>
+            </View>
+            <View style={styles.cardContent}>
+              <Text style={styles.cardTitle}>Physical</Text>
+              <Text style={styles.cardDescription}>Strength, dexterity, and endurance</Text>
+            </View>
+            <View style={styles.scoreContainer}>
+              <Text style={styles.score}>{characterSheet.physical.score}</Text>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => handleBoxPress("mind")}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#3B82F6', '#06B6D4'] as [string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.cardGradient}
+          >
+            <View style={styles.iconContainer}>
+              <Text style={styles.emoji}>{getCategoryIcon('mind')}</Text>
+            </View>
+            <View style={styles.cardContent}>
+              <Text style={styles.cardTitle}>Mind</Text>
+              <Text style={styles.cardDescription}>Intelligence, wisdom, and focus</Text>
+            </View>
+            <View style={styles.scoreContainer}>
+              <Text style={styles.score}>{characterSheet.mind.score}</Text>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => handleBoxPress("spiritual")}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#EC4899', '#8B5CF6'] as [string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.cardGradient}
+          >
+            <View style={styles.iconContainer}>
+              <Text style={styles.emoji}>{getCategoryIcon('spiritual')}</Text>
+            </View>
+            <View style={styles.cardContent}>
+              <Text style={styles.cardTitle}>Spiritual</Text>
+              <Text style={styles.cardDescription}>Faith, willpower, and mindfulness</Text>
+            </View>
+            <View style={styles.scoreContainer}>
+              <Text style={styles.score}>{characterSheet.spiritual.score}</Text>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
-}
-
-function orderShoppingList(shoppingList: ShoppingListItemType[]) {
-  return shoppingList.sort((item1, item2) => {
-    if (item1.completedAtTimestamp && item2.completedAtTimestamp) {
-      return item2.completedAtTimestamp - item1.completedAtTimestamp;
-    }
-
-    if (item1.completedAtTimestamp && !item2.completedAtTimestamp) {
-      return 1;
-    }
-
-    if (!item1.completedAtTimestamp && item2.completedAtTimestamp) {
-      return -1;
-    }
-
-    if (!item1.completedAtTimestamp && !item2.completedAtTimestamp) {
-      return item2.lastUpdatedTimestamp - item1.lastUpdatedTimestamp;
-    }
-
-    return 0;
-  });
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: theme.colorWhite,
+    backgroundColor: theme.colorBackground,
     flex: 1,
-    paddingTop: 12,
+    padding: theme.spacing.lg,
   },
-  contentContainer: {
-    paddingBottom: 24,
+  header: {
+    marginBottom: theme.spacing.xl,
   },
-  textInput: {
-    borderColor: theme.colorLightGrey,
-    borderWidth: 2,
-    padding: 12,
-    fontSize: 18,
-    borderRadius: 50,
-    marginHorizontal: 12,
-    marginBottom: 12,
-    backgroundColor: theme.colorWhite,
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: theme.colorText,
+    marginBottom: theme.spacing.xs,
   },
-  listEmptyContainer: {
-    justifyContent: "center",
-    alignItems: "center",
-    marginVertical: 18,
+  subtitle: {
+    fontSize: 16,
+    color: theme.colorTextSecondary,
+  },
+  cardsContainer: {
+    flex: 1,
+  },
+  card: {
+    borderRadius: theme.borderRadius.lg,
+    marginBottom: theme.spacing.lg,
+    ...theme.shadow.lg,
+    height: 130,
+    overflow: 'hidden',
+  },
+  cardGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+    height: '100%',
+  },
+  iconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: theme.spacing.md,
+  },
+  emoji: {
+    fontSize: 24,
+  },
+  cardContent: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 4,
+  },
+  cardDescription: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  scoreContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  score: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
   },
 });
