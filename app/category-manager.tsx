@@ -1,5 +1,5 @@
 // app/category-manager.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -8,12 +8,13 @@ import {
     TouchableOpacity,
     TextInput,
     Modal,
-    Alert
+    Alert,
+    FlatList
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { theme } from '../theme';
 import { useCharacter } from './context/CharacterContext';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 // Define color presets for gradients
@@ -34,6 +35,12 @@ const ICON_OPTIONS = [
     '🏠', '🌱', '🌍', '❤️', '👨‍👩‍👧‍👦', '🙏', '🔧', '⚽', '🎮', '🎭'
 ];
 
+// Interface for our stat
+interface Stat {
+    name: string;
+    value: number;
+}
+
 // Interface for our category
 interface StatCategory {
     id: string;
@@ -42,20 +49,39 @@ interface StatCategory {
     score: number;
     icon: string;
     gradient: [string, string];
+    stats: Stat[];
 }
 
 export default function CategoryManager() {
     const { characterSheet, updateCategory, addCategory, deleteCategory } = useCharacter();
     const router = useRouter();
+    const params = useLocalSearchParams();
+
+    // Check if a specific category ID is provided in the URL params
+    const initialCategoryId = typeof params.categoryId === 'string' ? params.categoryId : null;
 
     const [modalVisible, setModalVisible] = useState(false);
     const [editingCategory, setEditingCategory] = useState<string | null>(null);
+    const [attributeModalVisible, setAttributeModalVisible] = useState(false);
+    const [editingAttributeIndex, setEditingAttributeIndex] = useState<number | null>(null);
 
     const [categoryName, setCategoryName] = useState('');
     const [categoryDescription, setCategoryDescription] = useState('');
     const [categoryIcon, setCategoryIcon] = useState('🎯');
     const [categoryGradient, setCategoryGradient] = useState<[string, string]>(['#6366F1', '#8B5CF6']);
     const [initialScore, setInitialScore] = useState('10');
+    const [categoryStats, setCategoryStats] = useState<Stat[]>([]);
+
+    // For attribute editing
+    const [attributeName, setAttributeName] = useState('');
+    const [attributeValue, setAttributeValue] = useState('0');
+
+    // If a category ID is provided in the URL, open that category for editing when component mounts
+    useEffect(() => {
+        if (initialCategoryId && characterSheet.categories[initialCategoryId]) {
+            handleEditCategory(initialCategoryId);
+        }
+    }, [initialCategoryId, characterSheet]);
 
     // Function to reset form state
     const resetForm = () => {
@@ -64,7 +90,15 @@ export default function CategoryManager() {
         setCategoryIcon('🎯');
         setCategoryGradient(['#6366F1', '#8B5CF6']);
         setInitialScore('10');
+        setCategoryStats([]);
         setEditingCategory(null);
+    };
+
+    // Reset attribute form
+    const resetAttributeForm = () => {
+        setAttributeName('');
+        setAttributeValue('0');
+        setEditingAttributeIndex(null);
     };
 
     // Open modal to create a new category
@@ -83,8 +117,68 @@ export default function CategoryManager() {
         setCategoryIcon(category.icon);
         setCategoryGradient(category.gradient);
         setInitialScore(category.score.toString());
+        setCategoryStats([...category.stats]); // Copy stats array
         setEditingCategory(categoryId);
         setModalVisible(true);
+    };
+
+    // Open modal to add a new attribute
+    const handleAddAttribute = () => {
+        resetAttributeForm();
+        setAttributeModalVisible(true);
+    };
+
+    // Open modal to edit an existing attribute
+    const handleEditAttribute = (index: number) => {
+        const attribute = categoryStats[index];
+        setAttributeName(attribute.name);
+        setAttributeValue(attribute.value.toString());
+        setEditingAttributeIndex(index);
+        setAttributeModalVisible(true);
+    };
+
+    // Save an attribute (new or existing)
+    const handleSaveAttribute = () => {
+        if (!attributeName.trim()) {
+            Alert.alert('Error', 'Please enter an attribute name');
+            return;
+        }
+
+        const valueNum = parseInt(attributeValue, 10) || 0;
+        const newAttribute: Stat = { name: attributeName, value: valueNum };
+
+        if (editingAttributeIndex !== null) {
+            // Update existing attribute
+            const updatedStats = [...categoryStats];
+            updatedStats[editingAttributeIndex] = newAttribute;
+            setCategoryStats(updatedStats);
+        } else {
+            // Add new attribute
+            setCategoryStats([...categoryStats, newAttribute]);
+        }
+
+        setAttributeModalVisible(false);
+        resetAttributeForm();
+    };
+
+    // Delete an attribute
+    const handleDeleteAttribute = (index: number) => {
+        Alert.alert(
+            'Confirm Delete',
+            'Are you sure you want to delete this attribute?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: () => {
+                        const updatedStats = [...categoryStats];
+                        updatedStats.splice(index, 1);
+                        setCategoryStats(updatedStats);
+                    }
+                }
+            ]
+        );
     };
 
     // Save a category (new or existing)
@@ -103,7 +197,8 @@ export default function CategoryManager() {
                 description: categoryDescription,
                 icon: categoryIcon,
                 gradient: categoryGradient,
-                score: scoreNum
+                score: scoreNum,
+                stats: categoryStats
             });
         } else {
             // Create new category
@@ -113,12 +208,17 @@ export default function CategoryManager() {
                 icon: categoryIcon,
                 gradient: categoryGradient,
                 score: scoreNum,
-                stats: [] // Use stats instead of subStats to match the type definition
+                stats: categoryStats
             });
         }
 
         setModalVisible(false);
         resetForm();
+
+        // If we were directed here from the category screen, navigate back
+        if (initialCategoryId) {
+            router.back();
+        }
     };
 
     // Handle deleting a category
@@ -140,17 +240,35 @@ export default function CategoryManager() {
                 {
                     text: 'Delete',
                     style: 'destructive',
-                    onPress: () => deleteCategory(categoryId)
+                    onPress: () => {
+                        deleteCategory(categoryId);
+                        // If we were editing this category, close the modal
+                        if (editingCategory === categoryId) {
+                            setModalVisible(false);
+                            resetForm();
+                        }
+                    }
                 }
             ]
         );
     };
 
+    // Handle going back to previous screen
+    const handleBackPress = () => {
+        router.back();
+    };
+
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.title}>Manage Categories</Text>
-                <Text style={styles.subtitle}>Customize or add categories to track your progress</Text>
+            {/* Header with back button */}
+            <View style={styles.headerWithBack}>
+                <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+                    <Ionicons name="arrow-back" size={24} color={theme.colorText} />
+                </TouchableOpacity>
+                <View style={styles.headerTextContainer}>
+                    <Text style={styles.title}>Manage Categories</Text>
+                    <Text style={styles.subtitle}>Customize or add categories to track your progress</Text>
+                </View>
             </View>
 
             <ScrollView style={styles.categoriesList}>
@@ -328,6 +446,51 @@ export default function CategoryManager() {
                                 ))}
                             </View>
 
+                            {/* New Attributes Section */}
+                            <View style={styles.attributesSection}>
+                                <View style={styles.sectionHeaderRow}>
+                                    <Text style={styles.sectionTitle}>Attributes</Text>
+                                    <TouchableOpacity
+                                        style={styles.addAttributeButton}
+                                        onPress={handleAddAttribute}
+                                    >
+                                        <MaterialCommunityIcons name="plus" size={18} color={theme.colorPrimary} />
+                                        <Text style={styles.addAttributeText}>Add</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                {categoryStats.length === 0 ? (
+                                    <View style={styles.noAttributesContainer}>
+                                        <Text style={styles.noAttributesText}>
+                                            No attributes yet. Add attributes to track specific skills or metrics.
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    categoryStats.map((stat, index) => (
+                                        <View key={index} style={styles.attributeItem}>
+                                            <View style={styles.attributeInfo}>
+                                                <Text style={styles.attributeName}>{stat.name}</Text>
+                                                <Text style={styles.attributeValue}>+{stat.value}</Text>
+                                            </View>
+                                            <View style={styles.attributeActions}>
+                                                <TouchableOpacity
+                                                    style={styles.attributeActionButton}
+                                                    onPress={() => handleEditAttribute(index)}
+                                                >
+                                                    <MaterialCommunityIcons name="pencil" size={18} color={theme.colorPrimary} />
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={styles.attributeActionButton}
+                                                    onPress={() => handleDeleteAttribute(index)}
+                                                >
+                                                    <MaterialCommunityIcons name="delete" size={18} color={theme.colorDanger} />
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    ))
+                                )}
+                            </View>
+
                             <View style={styles.previewSection}>
                                 <Text style={styles.previewLabel}>Preview:</Text>
                                 <LinearGradient
@@ -381,6 +544,69 @@ export default function CategoryManager() {
                     </View>
                 </View>
             </Modal>
+
+            {/* Attribute Edit Modal */}
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={attributeModalVisible}
+                onRequestClose={() => setAttributeModalVisible(false)}
+            >
+                <View style={styles.modalContainer}>
+                    <View style={[styles.modalContent, styles.attributeModalContent]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>
+                                {editingAttributeIndex !== null ? 'Edit Attribute' : 'New Attribute'}
+                            </Text>
+                            <TouchableOpacity
+                                style={styles.modalCloseButton}
+                                onPress={() => setAttributeModalVisible(false)}
+                            >
+                                <MaterialCommunityIcons name="close" size={24} color={theme.colorTextSecondary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.attributeModalForm}>
+                            <Text style={styles.inputLabel}>Attribute Name</Text>
+                            <TextInput
+                                style={styles.textInput}
+                                value={attributeName}
+                                onChangeText={setAttributeName}
+                                placeholder="e.g., Strength, Creativity, Focus"
+                            />
+
+                            <Text style={styles.inputLabel}>Current Value</Text>
+                            <TextInput
+                                style={styles.textInput}
+                                value={attributeValue}
+                                onChangeText={setAttributeValue}
+                                keyboardType="number-pad"
+                                placeholder="0"
+                            />
+
+                            <Text style={styles.attributeHelpText}>
+                                This value represents the progress made in this attribute. It will be added to the base score.
+                            </Text>
+                        </View>
+
+                        <View style={styles.modalFooter}>
+                            <TouchableOpacity
+                                style={styles.cancelButton}
+                                onPress={() => setAttributeModalVisible(false)}
+                            >
+                                <Text style={styles.cancelButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.saveButton}
+                                onPress={handleSaveAttribute}
+                            >
+                                <Text style={styles.saveButtonText}>Save</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -390,6 +616,23 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: theme.colorBackground,
         padding: theme.spacing.lg,
+    },
+    headerWithBack: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: theme.spacing.lg,
+    },
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: theme.colorCard,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: theme.spacing.md,
+    },
+    headerTextContainer: {
+        flex: 1,
     },
     header: {
         marginBottom: theme.spacing.lg,
@@ -519,6 +762,9 @@ const styles = StyleSheet.create({
         borderRadius: theme.borderRadius.lg,
         ...theme.shadow.lg,
     },
+    attributeModalContent: {
+        maxHeight: '60%', // Smaller modal for attribute editing
+    },
     modalHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -539,6 +785,9 @@ const styles = StyleSheet.create({
         padding: theme.spacing.lg,
         maxHeight: 500,
     },
+    attributeModalForm: {
+        padding: theme.spacing.lg,
+    },
     inputLabel: {
         fontSize: 16,
         fontWeight: '500',
@@ -554,6 +803,12 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: theme.colorText,
         marginBottom: theme.spacing.lg,
+    },
+    attributeHelpText: {
+        fontSize: 14,
+        color: theme.colorTextSecondary,
+        marginBottom: theme.spacing.lg,
+        fontStyle: 'italic',
     },
     textArea: {
         minHeight: 80,
@@ -605,6 +860,113 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
     },
+    // Attributes section
+    attributesSection: {
+        marginBottom: theme.spacing.lg,
+        borderWidth: 1,
+        borderColor: theme.colorBorder,
+        borderRadius: theme.borderRadius.md,
+        padding: theme.spacing.md,
+        backgroundColor: theme.colorCard,
+    },
+    sectionHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: theme.spacing.md,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: theme.colorText,
+    },
+    addAttributeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: theme.borderRadius.sm,
+        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    },
+    addAttributeText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: theme.colorPrimary,
+        marginLeft: 4,
+    },
+    noAttributesContainer: {
+        padding: theme.spacing.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    noAttributesText: {
+        fontSize: 14,
+        color: theme.colorTextSecondary,
+        textAlign: 'center',
+        fontStyle: 'italic',
+    },
+    attributeItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: theme.spacing.sm,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colorBorder,
+    },
+    attributeInfo: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    attributeName: {
+        fontSize: 16,
+        color: theme.colorText,
+    },
+    attributeValue: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: theme.colorPrimary,
+        marginLeft: theme.spacing.sm,
+    },
+    attributeActions: {
+        flexDirection: 'row',
+    },
+    attributeActionButton: {
+        padding: 8,
+        marginLeft: theme.spacing.sm,
+    },
+    // Add these styles to the existing StyleSheet.create({...}) object
+
+    modalFooter: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        padding: theme.spacing.lg,
+        borderTopWidth: 1,
+        borderTopColor: theme.colorBorder,
+    },
+    cancelButton: {
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: theme.borderRadius.md,
+        marginRight: theme.spacing.md,
+    },
+    cancelButtonText: {
+        fontSize: 16,
+        color: theme.colorTextSecondary,
+        fontWeight: '500',
+    },
+    saveButton: {
+        backgroundColor: theme.colorPrimary,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: theme.borderRadius.md,
+    },
+    saveButtonText: {
+        fontSize: 16,
+        color: 'white',
+        fontWeight: '500',
+    },
     previewSection: {
         marginBottom: theme.spacing.lg,
     },
@@ -618,8 +980,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         padding: theme.spacing.md,
-        borderRadius: theme.borderRadius.lg,
-        height: 100,
+        borderRadius: theme.borderRadius.md,
     },
     previewIconContainer: {
         width: 40,
@@ -637,27 +998,29 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     previewTitle: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: 'bold',
         color: 'white',
-        marginBottom: 4,
+        marginBottom: 2,
     },
     previewDescription: {
         fontSize: 12,
         color: 'rgba(255, 255, 255, 0.8)',
     },
     previewScoreContainer: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        justifyContent: 'center',
-        alignItems: 'center',
+
     },
     previewScore: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: 'bold',
         color: 'white',
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        textAlign: 'center',
+        textAlignVertical: 'center',
+        lineHeight: 36,
     },
     defaultCategoryNote: {
         flexDirection: 'row',
@@ -668,43 +1031,9 @@ const styles = StyleSheet.create({
         marginBottom: theme.spacing.lg,
     },
     defaultCategoryNoteText: {
-        flex: 1,
         fontSize: 14,
         color: theme.colorWarning,
         marginLeft: theme.spacing.sm,
-    },
-    modalFooter: {
-        flexDirection: 'row',
-        borderTopWidth: 1,
-        borderTopColor: theme.colorBorder,
-        padding: theme.spacing.md,
-    },
-    cancelButton: {
         flex: 1,
-        padding: theme.spacing.md,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: theme.borderRadius.md,
-        borderWidth: 1,
-        borderColor: theme.colorBorder,
-        marginRight: theme.spacing.sm,
-    },
-    cancelButtonText: {
-        color: theme.colorTextSecondary,
-        fontSize: 16,
-        fontWeight: '500',
-    },
-    saveButton: {
-        flex: 2,
-        padding: theme.spacing.md,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: theme.colorPrimary,
-        borderRadius: theme.borderRadius.md,
-    },
-    saveButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '500',
-    },
+    }
 });

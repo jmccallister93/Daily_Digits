@@ -6,86 +6,51 @@ import { useCharacter } from "../context/CharacterContext";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
-// Define category types and their properties
-type CategoryType = "physical" | "mind" | "social";
+// Import the StatCategory type from your context
+type Stat = {
+    name: string;
+    value: number;
+};
 
-interface CategoryConfig {
-    title: string;
-    emoji: string;
-    subtitle: string;
-    colors: [string, string];
-    descriptions: { [key: string]: string };
-}
-
-const categoryConfigs: Record<CategoryType, CategoryConfig> = {
-    physical: {
-        title: "Physical",
-        emoji: "💪",
-        subtitle: "Strength, endurance, and physical wellness",
-        colors: ['#6366F1', '#8B5CF6'],
-        descriptions: {
-            "Strength": "Physical power and muscle development.",
-            "Endurance": "Stamina and ability to sustain physical effort.",
-            "Flexibility": "Range of motion and muscle elasticity.",
-            "Nutrition": "Quality of diet and food choices.",
-            "Sleep Quality": "Consistent, restful sleep patterns.",
-        }
-    },
-    mind: {
-        title: "Mind",
-        emoji: "🧠",
-        subtitle: "Knowledge, creativity, and mental skills",
-        colors: ['#3B82F6', '#06B6D4'],
-        descriptions: {
-            "Knowledge": "Facts, information, and skills acquired through experience or education.",
-            "Creativity": "Use of imagination to create original ideas or solutions.",
-            "Problem Solving": "Ability to find solutions to difficult or complex issues.",
-            "Focus": "Ability to concentrate attention on a task without distraction.",
-            "Learning": "Acquisition of new skills, concepts, or understanding.",
-        }
-    },
-    social: {
-        title: "Social",
-        emoji: "✨",
-        subtitle: "Relationships, purpose, and emotional health",
-        colors: ['#EC4899', '#8B5CF6'],
-        descriptions: {
-            "Relationships": "Quality of connections with friends, family, and partners.",
-            "Self-Awareness": "Understanding of one's own character, feelings, motives, and desires.",
-            "Gratitude": "Appreciation for the positive aspects of life.",
-            "Purpose": "Sense of meaning and direction in life.",
-            "Happiness": "Overall subjective well-being and life satisfaction."
-        }
-    }
+type StatCategory = {
+    id: string;
+    name: string;
+    description: string;
+    score: number;
+    icon: string;
+    gradient: [string, string];
+    stats: Stat[];
 };
 
 export default function DynamicStatsScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
-    const { characterSheet } = useCharacter();
+    const { characterSheet, isLoading } = useCharacter();
 
-    // Get category from URL params
-    const rawCategory = typeof params.category === 'string' ? params.category : 'physical';
+    // Get category ID from URL params
+    const categoryId = typeof params.category === 'string' ? params.category : 'physical';
 
-    // Validate and set the category
-    const isCategoryValid = (cat: string): cat is CategoryType => {
-        return cat === 'physical' || cat === 'mind' || cat === 'social';
-    };
-
-    const category: CategoryType = isCategoryValid(rawCategory) ? rawCategory : 'physical';
-
-    // Get the config for this category
-    const config = categoryConfigs[category];
-
-    const [stats, setStats] = useState<{ name: string; value: number }[]>([]);
+    // Get all category details from context
+    const [category, setCategory] = useState<StatCategory | null>(null);
+    const [stats, setStats] = useState<Stat[]>([]);
     const [totalScore, setTotalScore] = useState(0);
 
     useEffect(() => {
-        if (characterSheet[category]) {
-            setStats(characterSheet[category].stats);
-            setTotalScore(characterSheet[category].score);
+        if (!isLoading && characterSheet.categories) {
+            // Find the category that matches the ID from params
+            const categoryData = characterSheet.categories[categoryId];
+
+            if (categoryData) {
+                setCategory(categoryData);
+                setStats(categoryData.stats);
+                setTotalScore(categoryData.score);
+            } else {
+                // If category doesn't exist, redirect to home or default category
+                console.warn(`Category ${categoryId} not found`);
+                router.replace("/");
+            }
         }
-    }, [characterSheet, category]);
+    }, [characterSheet, categoryId, isLoading]);
 
     const handleBackPress = () => {
         router.navigate("/");
@@ -93,21 +58,24 @@ export default function DynamicStatsScreen() {
 
     const handleAddActivity = () => {
         // Navigate to activity log with the current category
-        const currentPath = `/stats/${category}`;
+        const currentPath = `/stats/${categoryId}`;
         router.push({
             pathname: "/activities/activity-log",
             params: {
-                category: category,
+                category: categoryId,
                 from: currentPath
             }
         });
     };
 
-    // Get description for the attribute
-    const getAttributeDescription = (statName: string) => {
-        return config.descriptions[statName] ||
-            "Improve this attribute through consistent practice and dedication.";
-    };
+    // Show loading or empty state if category data isn't available yet
+    if (!category) {
+        return (
+            <View style={[styles.container, styles.loadingContainer]}>
+                <Text style={styles.loadingText}>Loading category data...</Text>
+            </View>
+        );
+    }
 
     return (
         <>
@@ -116,7 +84,7 @@ export default function DynamicStatsScreen() {
                 <StatusBar barStyle="light-content" />
 
                 <LinearGradient
-                    colors={config.colors}
+                    colors={category.gradient}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.headerGradient}
@@ -125,13 +93,12 @@ export default function DynamicStatsScreen() {
                         <Ionicons name="arrow-back" size={24} color="white" />
                     </TouchableOpacity>
 
-
                     <View style={styles.headerContent}>
                         <View style={styles.headerTitle}>
-                            <Text style={styles.emoji}>{config.emoji}</Text>
-                            <Text style={styles.title}>{config.title}</Text>
+                            <Text style={styles.emoji}>{category.icon}</Text>
+                            <Text style={styles.title}>{category.name}</Text>
                         </View>
-                        <Text style={styles.subtitle}>{config.subtitle}</Text>
+                        <Text style={styles.subtitle}>{category.description}</Text>
 
                         <View style={styles.scoreContainer}>
                             <Text style={styles.scoreLabel}>Total Score</Text>
@@ -140,9 +107,7 @@ export default function DynamicStatsScreen() {
                     </View>
                 </LinearGradient>
 
-
                 <View style={styles.statsContainer}>
-
                     <Text style={styles.sectionTitle}>Attributes</Text>
 
                     <ScrollView style={styles.statsList}>
@@ -156,7 +121,7 @@ export default function DynamicStatsScreen() {
                                 </View>
 
                                 <Text style={styles.statDescription}>
-                                    {getAttributeDescription(stat.name)}
+                                    Improve this attribute through consistent practice and dedication.
                                 </Text>
 
                                 <View style={styles.progressBar}>
@@ -174,7 +139,6 @@ export default function DynamicStatsScreen() {
                     <TouchableOpacity style={styles.addButton} onPress={handleAddActivity}>
                         <Text style={styles.addButtonText}>Log Activity</Text>
                     </TouchableOpacity>
-
                 </View>
             </View>
         </>
@@ -185,6 +149,14 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: theme.colorBackground,
+    },
+    loadingContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        fontSize: 16,
+        color: theme.colorTextSecondary,
     },
     headerGradient: {
         paddingTop: 50, // For status bar
