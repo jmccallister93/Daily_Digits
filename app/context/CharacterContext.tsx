@@ -15,7 +15,7 @@ type Category = {
 type CharacterSheet = {
     physical: Category;
     mind: Category;
-    spiritual: Category;
+    social: Category;
 };
 
 type ActivityLog = {
@@ -55,7 +55,7 @@ const defaultCharacterSheet: CharacterSheet = {
             { name: "Learning", value: 0 }
         ]
     },
-    spiritual: {
+    social: {
         score: 10,
         stats: [
             { name: "Relationships", value: 0 },

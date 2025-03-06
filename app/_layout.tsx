@@ -70,7 +70,7 @@ export default function Layout() {
                     }}
                 />
                 <Tabs.Screen
-                    name="spiritual-stats"
+                    name="social-stats"
                     options={{
                         href: null,
                         // tabBarButton: () => null,

@@ -8,7 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 // Define the valid category types for type safety
-type CategoryType = "physical" | "mind" | "spiritual";
+type CategoryType = "physical" | "mind" | "social";
 
 export default function ActivityLogScreen() {
     const router = useRouter();
@@ -19,7 +19,7 @@ export default function ActivityLogScreen() {
 
     // Validate that the category is one of our valid types
     const isValidCategory = (cat: string | undefined): cat is CategoryType => {
-        return cat === "physical" || cat === "mind" || cat === "spiritual";
+        return cat === "physical" || cat === "mind" || cat === "social";
     };
 
     // Add a default fallback if category is undefined or invalid
@@ -56,7 +56,7 @@ export default function ActivityLogScreen() {
                 return ['#6366F1', '#8B5CF6']; // Purple gradient
             case 'mind':
                 return ['#3B82F6', '#06B6D4']; // Blue gradient
-            case 'spiritual':
+            case 'social':
                 return ['#EC4899', '#8B5CF6']; // Pink gradient
             default:
                 return ['#6366F1', '#8B5CF6'];
@@ -70,8 +70,8 @@ export default function ActivityLogScreen() {
                 return "Physical Activity";
             case 'mind':
                 return "Mind Activity";
-            case 'spiritual':
-                return "Spiritual Activity";
+            case 'social':
+                return "Social Activity";
             default:
                 return "Log Activity";
         }
@@ -146,7 +146,7 @@ export default function ActivityLogScreen() {
                     return "E.g., 'Skipped workout', 'Ate unhealthy food'";
                 case 'mind':
                     return "E.g., 'Procrastinated on task', 'Excessive social media'";
-                case 'spiritual':
+                case 'social':
                     return "E.g., 'Lost my temper', 'Negative self-talk'";
                 default:
                     return "Describe what happened...";
@@ -157,7 +157,7 @@ export default function ActivityLogScreen() {
                     return "E.g., 'Went for a 5K run', 'Did 30 minutes of yoga'";
                 case 'mind':
                     return "E.g., 'Read 30 pages of a book', 'Learned a new skill'";
-                case 'spiritual':
+                case 'social':
                     return "E.g., 'Had a deep conversation', 'Practiced meditation'";
                 default:
                     return "Describe what you did...";

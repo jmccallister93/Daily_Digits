@@ -6,7 +6,7 @@ export default function StatsLayout() {
             <Stack.Screen name="index" />
             <Stack.Screen name="physical-stats" />
             <Stack.Screen name="mind-stats" />
-            <Stack.Screen name="spiritual-stats" />
+            <Stack.Screen name="social-stats" />
         </Stack>
     );
 }

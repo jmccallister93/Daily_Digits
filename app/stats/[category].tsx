@@ -7,7 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 // Define category types and their properties
-type CategoryType = "physical" | "mind" | "spiritual";
+type CategoryType = "physical" | "mind" | "social";
 
 interface CategoryConfig {
     title: string;
@@ -44,8 +44,8 @@ const categoryConfigs: Record<CategoryType, CategoryConfig> = {
             "Learning": "Acquisition of new skills, concepts, or understanding.",
         }
     },
-    spiritual: {
-        title: "Spiritual",
+    social: {
+        title: "Social",
         emoji: "✨",
         subtitle: "Relationships, purpose, and emotional health",
         colors: ['#EC4899', '#8B5CF6'],
@@ -69,7 +69,7 @@ export default function DynamicStatsScreen() {
 
     // Validate and set the category
     const isCategoryValid = (cat: string): cat is CategoryType => {
-        return cat === 'physical' || cat === 'mind' || cat === 'spiritual';
+        return cat === 'physical' || cat === 'mind' || cat === 'social';
     };
 
     const category: CategoryType = isCategoryValid(rawCategory) ? rawCategory : 'physical';

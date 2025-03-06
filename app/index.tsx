@@ -10,7 +10,7 @@ export default function App() {
   const { characterSheet } = useCharacter();
   const router = useRouter();
 
-  const handleBoxPress = (category: "physical" | "mind" | "spiritual") => {
+  const handleBoxPress = (category: "physical" | "mind" | "social") => {
     router.push(`/stats/${category}`);
   };
 
@@ -20,7 +20,7 @@ export default function App() {
         return '💪';
       case 'mind':
         return '🧠';
-      case 'spiritual':
+      case 'social':
         return '✨';
       default:
         return '📊';
@@ -85,7 +85,7 @@ export default function App() {
 
         <TouchableOpacity
           style={styles.card}
-          onPress={() => handleBoxPress("spiritual")}
+          onPress={() => handleBoxPress("social")}
           activeOpacity={0.8}
         >
           <LinearGradient
@@ -95,14 +95,14 @@ export default function App() {
             style={styles.cardGradient}
           >
             <View style={styles.iconContainer}>
-              <Text style={styles.emoji}>{getCategoryIcon('spiritual')}</Text>
+              <Text style={styles.emoji}>{getCategoryIcon('social')}</Text>
             </View>
             <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>Spiritual</Text>
+              <Text style={styles.cardTitle}>Social</Text>
               <Text style={styles.cardDescription}>Faith, willpower, and mindfulness</Text>
             </View>
             <View style={styles.scoreContainer}>
-              <Text style={styles.score}>{characterSheet.spiritual.score}</Text>
+              <Text style={styles.score}>{characterSheet.social.score}</Text>
             </View>
           </LinearGradient>
         </TouchableOpacity>
