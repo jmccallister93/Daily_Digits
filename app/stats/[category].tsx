@@ -125,6 +125,7 @@ export default function DynamicStatsScreen() {
                         <Ionicons name="arrow-back" size={24} color="white" />
                     </TouchableOpacity>
 
+
                     <View style={styles.headerContent}>
                         <View style={styles.headerTitle}>
                             <Text style={styles.emoji}>{config.emoji}</Text>
@@ -139,7 +140,9 @@ export default function DynamicStatsScreen() {
                     </View>
                 </LinearGradient>
 
+
                 <View style={styles.statsContainer}>
+
                     <Text style={styles.sectionTitle}>Attributes</Text>
 
                     <ScrollView style={styles.statsList}>
@@ -171,6 +174,7 @@ export default function DynamicStatsScreen() {
                     <TouchableOpacity style={styles.addButton} onPress={handleAddActivity}>
                         <Text style={styles.addButtonText}>Log Activity</Text>
                     </TouchableOpacity>
+
                 </View>
             </View>
         </>

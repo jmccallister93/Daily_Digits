@@ -1,31 +1,54 @@
 // app/index.tsx
-import { StyleSheet, View, Text, TouchableOpacity } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, FlatList } from "react-native";
 import { theme } from "../theme";
 import { useRouter } from "expo-router";
-import { useCharacter } from "./context/CharacterContext";
+import { StatCategory, useCharacter } from "./context/CharacterContext";
 import { LinearGradient } from "expo-linear-gradient";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import SplashScreen from "./components/SplashScreen";
 
 export default function App() {
-  const { characterSheet } = useCharacter();
+  const { characterSheet, isLoading } = useCharacter();
   const router = useRouter();
 
-  const handleBoxPress = (category: "physical" | "mind" | "social") => {
-    router.push(`/stats/${category}`);
+  const handleBoxPress = (categoryId: string) => {
+    router.push(`/stats/${categoryId}`);
   };
 
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'physical':
-        return '💪';
-      case 'mind':
-        return '🧠';
-      case 'social':
-        return '✨';
-      default:
-        return '📊';
-    }
-  };
+  // Get all categories from the context
+  const categories = Object.values(characterSheet.categories);
+
+  // Render a category card
+  const renderCategoryCard = (category: StatCategory) => (
+    <TouchableOpacity
+      key={category.id}
+      style={styles.card}
+      onPress={() => handleBoxPress(category.id)}
+      activeOpacity={0.8}
+    >
+      <LinearGradient
+        colors={category.gradient as [string, string]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.cardGradient}
+      >
+        <View style={styles.iconContainer}>
+          <Text style={styles.emoji}>{category.icon}</Text>
+        </View>
+        <View style={styles.cardContent}>
+          <Text style={styles.cardTitle}>{category.name}</Text>
+          <Text style={styles.cardDescription}>{category.description}</Text>
+        </View>
+        <View style={styles.scoreContainer}>
+          <Text style={styles.score}>{category.score}</Text>
+        </View>
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+
+  // Show splash screen while data is loading
+  if (isLoading) {
+    return <SplashScreen message="Preparing your journey..." />;
+  }
 
   return (
     <View style={styles.container}>
@@ -35,77 +58,12 @@ export default function App() {
       </View>
 
       <View style={styles.cardsContainer}>
-        <TouchableOpacity
-          style={styles.card}
-          onPress={() => handleBoxPress("physical")}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={['#6366F1', '#8B5CF6'] as [string, string]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.cardGradient}
-          >
-            <View style={styles.iconContainer}>
-              <Text style={styles.emoji}>{getCategoryIcon('physical')}</Text>
-            </View>
-            <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>Physical</Text>
-              <Text style={styles.cardDescription}>Strength, dexterity, and endurance</Text>
-            </View>
-            <View style={styles.scoreContainer}>
-              <Text style={styles.score}>{characterSheet.physical.score}</Text>
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.card}
-          onPress={() => handleBoxPress("mind")}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={['#3B82F6', '#06B6D4'] as [string, string]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.cardGradient}
-          >
-            <View style={styles.iconContainer}>
-              <Text style={styles.emoji}>{getCategoryIcon('mind')}</Text>
-            </View>
-            <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>Mind</Text>
-              <Text style={styles.cardDescription}>Intelligence, wisdom, and focus</Text>
-            </View>
-            <View style={styles.scoreContainer}>
-              <Text style={styles.score}>{characterSheet.mind.score}</Text>
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.card}
-          onPress={() => handleBoxPress("social")}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={['#EC4899', '#8B5CF6'] as [string, string]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.cardGradient}
-          >
-            <View style={styles.iconContainer}>
-              <Text style={styles.emoji}>{getCategoryIcon('social')}</Text>
-            </View>
-            <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>Social</Text>
-              <Text style={styles.cardDescription}>Faith, willpower, and mindfulness</Text>
-            </View>
-            <View style={styles.scoreContainer}>
-              <Text style={styles.score}>{characterSheet.social.score}</Text>
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
+        <FlatList
+          data={categories}
+          renderItem={({ item }) => renderCategoryCard(item)}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.flatListContent}
+        />
       </View>
     </View>
   );
@@ -132,6 +90,9 @@ const styles = StyleSheet.create({
   },
   cardsContainer: {
     flex: 1,
+  },
+  flatListContent: {
+    paddingBottom: theme.spacing.lg,
   },
   card: {
     borderRadius: theme.borderRadius.lg,

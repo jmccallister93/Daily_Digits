@@ -52,6 +52,15 @@ export default function Layout() {
                         ),
                     }}
                 />
+                <Tabs.Screen
+                    name="category-manager"
+                    options={{
+                        title: "Stat Manager",
+                        tabBarIcon: ({ color, size }) => (
+                            <MaterialCommunityIcons name="lead-pencil" size={size} color={color} />
+                        ),
+                    }}
+                />
                 {/* Stats screens - Individual routes */}
                 <Tabs.Screen
                     name="stats/physical-stats"
@@ -84,6 +93,14 @@ export default function Layout() {
                     options={{
 
                         tabBarButton: () => null,
+                        headerShown: false
+                    }}
+                />
+                <Tabs.Screen
+                    name="components/SplashScreen"
+                    options={{
+                        href: null,
+                        // tabBarButton: () => null,
                         headerShown: false
                     }}
                 />
