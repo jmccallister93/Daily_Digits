@@ -1,21 +1,21 @@
-// app/spiritual-stats.tsx
+// app/mind-stats.tsx
 import { useRouter, Stack } from "expo-router";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar } from "react-native";
-import { theme } from "../../theme";
+import { theme } from "../theme";
 import { useState, useEffect } from "react";
-import { useCharacter } from "../context/CharacterContext";
+import { useCharacter } from "../app/context/CharacterContext";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
-export default function SpiritualStatsScreen() {
+export default function MindStatsScreen() {
     const router = useRouter();
     const { characterSheet } = useCharacter();
 
     const [stats, setStats] = useState<{ name: string; value: number }[]>([]);
     const [totalScore, setTotalScore] = useState(0);
 
-    // This is a fixed category screen for spiritual stats
-    const category = "spiritual";
+    // This is a fixed category screen for mind stats
+    const category = "mind";
 
     useEffect(() => {
         if (characterSheet[category]) {
@@ -25,24 +25,33 @@ export default function SpiritualStatsScreen() {
     }, [characterSheet]);
 
     const handleBackPress = () => {
-        router.back();
+        router.navigate("/");
     };
 
     const handleAddActivity = () => {
-        // Navigate to activity log with spiritual category
+        // Navigate to activity log with mind category
         console.log("Navigating to activity log with category:", category);
-        router.push(`/activities/activity-log?category=${category}`);
+        // router.push(`/activities/activity-log?category=${category}`);
+        const currentPath = `/stats/${category}-stats`; // or use the full path if you need to
+        console.log("Navigating to activity log with category:", category);
+        router.push({
+            pathname: "/activities/activity-log",
+            params: {
+                category: category,
+                from: currentPath
+            }
+        });
     };
 
     // Generate a description for each attribute
     const getAttributeDescription = (statName: string) => {
         const descriptions: { [key: string]: string } = {
-            // Spiritual attributes
-            "Relationships": "Quality of connections with friends, family, and partners.",
-            "Self-Awareness": "Understanding of one's own character, feelings, motives, and desires.",
-            "Gratitude": "Appreciation for the positive aspects of life.",
-            "Purpose": "Sense of meaning and direction in life.",
-            "Happiness": "Overall subjective well-being and life satisfaction."
+            // Mind attributes
+            "Knowledge": "Facts, information, and skills acquired through experience or education.",
+            "Creativity": "Use of imagination to create original ideas or solutions.",
+            "Problem Solving": "Ability to find solutions to difficult or complex issues.",
+            "Focus": "Ability to concentrate attention on a task without distraction.",
+            "Learning": "Acquisition of new skills, concepts, or understanding.",
         };
 
         return descriptions[statName] || "Improve this attribute through consistent practice and dedication.";
@@ -55,7 +64,7 @@ export default function SpiritualStatsScreen() {
                 <StatusBar barStyle="light-content" />
 
                 <LinearGradient
-                    colors={['#EC4899', '#8B5CF6'] as [string, string]}
+                    colors={['#3B82F6', '#06B6D4'] as [string, string]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.headerGradient}
@@ -66,10 +75,10 @@ export default function SpiritualStatsScreen() {
 
                     <View style={styles.headerContent}>
                         <View style={styles.headerTitle}>
-                            <Text style={styles.emoji}>✨</Text>
-                            <Text style={styles.title}>Spiritual</Text>
+                            <Text style={styles.emoji}>🧠</Text>
+                            <Text style={styles.title}>Mind</Text>
                         </View>
-                        <Text style={styles.subtitle}>Relationships, purpose, and emotional health</Text>
+                        <Text style={styles.subtitle}>Knowledge, creativity, and mental skills</Text>
 
                         <View style={styles.scoreContainer}>
                             <Text style={styles.scoreLabel}>Total Score</Text>

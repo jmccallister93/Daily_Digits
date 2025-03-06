@@ -1,6 +1,5 @@
-// app/activities/activity-log.tsx
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform } from "react-native";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, Switch } from "react-native";
 import { theme } from "../../theme";
 import { useState, useEffect } from "react";
 import { Picker } from "@react-native-picker/picker";
@@ -26,27 +25,19 @@ export default function ActivityLogScreen() {
     // Add a default fallback if category is undefined or invalid
     const safeCategory: CategoryType = isValidCategory(rawCategory) ? rawCategory : "physical";
 
-    console.log("Raw params:", JSON.stringify(params));
-    console.log("Category from params:", rawCategory);
-    console.log("Using safe category:", safeCategory);
-
     const { characterSheet, logActivity } = useCharacter();
 
     const [activity, setActivity] = useState("");
     const [selectedStat, setSelectedStat] = useState("");
-    const [points, setPoints] = useState("1");
+    const [pointsValue, setPointsValue] = useState(1);
+    const [isNegative, setIsNegative] = useState(false);
     const [errors, setErrors] = useState({ activity: "", stat: "", points: "" });
     const [availableStats, setAvailableStats] = useState<string[]>([]);
-
-    console.log("Current category:", rawCategory);
-    console.log("Character sheet:", characterSheet);
 
     // Set up available stats based on category
     useEffect(() => {
         try {
-            // Now TypeScript knows that safeCategory is a valid key
             const stats = characterSheet[safeCategory].stats.map(stat => stat.name);
-            console.log(`Stats for ${safeCategory}:`, stats);
             setAvailableStats(stats);
 
             // If stats are available, preselect the first one
@@ -86,8 +77,23 @@ export default function ActivityLogScreen() {
         }
     };
 
+    // const previousScreen = typeof params.from === 'string' ? params.from : '/activity-history';
+    // const handleCancel = () => {
+    //     router.push(previousScreen);
+    // };
+
+    const previousScreen = typeof params.from === 'string' ? params.from : undefined;
+
     const handleCancel = () => {
-        router.back();
+        if (previousScreen) {
+            // Navigate directly to the previous screen
+            console.log("Navigating back to:", previousScreen);
+            router.push(previousScreen);
+        } else {
+            // Fallback to a default screen like activity history
+            console.log("No previous screen, going to activity history");
+            router.push("/activity-history");
+        }
     };
 
     const validateForm = () => {
@@ -100,12 +106,11 @@ export default function ActivityLogScreen() {
         }
 
         if (!selectedStat) {
-            newErrors.stat = "Please select a stat to improve";
+            newErrors.stat = "Please select a stat to modify";
             valid = false;
         }
 
-        const pointsNum = parseInt(points);
-        if (isNaN(pointsNum) || pointsNum < 1 || pointsNum > 5) {
+        if (pointsValue < 1 || pointsValue > 5) {
             newErrors.points = "Points must be between 1 and 5";
             valid = false;
         }
@@ -117,12 +122,17 @@ export default function ActivityLogScreen() {
     const handleSave = () => {
         if (!validateForm()) return;
 
+        // Apply negative sign if the negative toggle is on
+        const finalPoints = isNegative ? -pointsValue : pointsValue;
+
         logActivity(
             activity,
             safeCategory,
             selectedStat,
-            parseInt(points)
+            finalPoints
         );
+
+        setActivity("")
 
         // Navigate back
         router.back();
@@ -130,29 +140,29 @@ export default function ActivityLogScreen() {
 
     // Get examples of activities for the selected category
     const getActivityExamples = () => {
-        switch (safeCategory) {
-            case 'physical':
-                return "E.g., 'Went for a 5K run', 'Did 30 minutes of yoga'";
-            case 'mind':
-                return "E.g., 'Read 30 pages of a book', 'Learned a new skill'";
-            case 'spiritual':
-                return "E.g., 'Had a deep conversation', 'Practiced meditation'";
-            default:
-                return "Describe what you did...";
+        if (isNegative) {
+            switch (safeCategory) {
+                case 'physical':
+                    return "E.g., 'Skipped workout', 'Ate unhealthy food'";
+                case 'mind':
+                    return "E.g., 'Procrastinated on task', 'Excessive social media'";
+                case 'spiritual':
+                    return "E.g., 'Lost my temper', 'Negative self-talk'";
+                default:
+                    return "Describe what happened...";
+            }
+        } else {
+            switch (safeCategory) {
+                case 'physical':
+                    return "E.g., 'Went for a 5K run', 'Did 30 minutes of yoga'";
+                case 'mind':
+                    return "E.g., 'Read 30 pages of a book', 'Learned a new skill'";
+                case 'spiritual':
+                    return "E.g., 'Had a deep conversation', 'Practiced meditation'";
+                default:
+                    return "Describe what you did...";
+            }
         }
-    };
-
-    // Debug content to help diagnose the issue
-    const debugInfo = () => {
-        return (
-            <View style={styles.debugContainer}>
-                <Text style={styles.debugTitle}>Debug Info:</Text>
-                <Text>Raw category param: {rawCategory || "none"}</Text>
-                <Text>Safe category: {safeCategory}</Text>
-                <Text>Available Stats: {availableStats.length > 0 ? availableStats.join(", ") : "none"}</Text>
-                <Text>Selected Stat: {selectedStat || "none"}</Text>
-            </View>
-        );
     };
 
     return (
@@ -171,15 +181,29 @@ export default function ActivityLogScreen() {
 
                     <Text style={styles.title}>{getCategoryTitle()}</Text>
                     <Text style={styles.subtitle}>
-                        What did you do to improve your {safeCategory} attributes?
+                        {isNegative
+                            ? `What negatively affected your ${safeCategory} attributes?`
+                            : `What did you do to improve your ${safeCategory} attributes?`
+                        }
                     </Text>
                 </LinearGradient>
 
                 <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollContainer}>
-                    {/* Debug information to help diagnose the issue */}
-                    {/* {debugInfo()} */}
-
                     <View style={styles.card}>
+                        {/* Toggle for positive/negative impact */}
+                        <View style={styles.toggleContainer}>
+                            <Text style={styles.toggleLabel}>
+                                {isNegative ? "Negative Impact" : "Positive Impact"}
+                            </Text>
+                            <Switch
+                                value={isNegative}
+                                onValueChange={setIsNegative}
+                                trackColor={{ false: theme.colorSuccess, true: theme.colorDanger }}
+                                thumbColor="#fff"
+                                ios_backgroundColor={theme.colorSuccess}
+                            />
+                        </View>
+
                         <View style={styles.formGroup}>
                             <Text style={styles.label}>Activity Description</Text>
                             <TextInput
@@ -195,7 +219,7 @@ export default function ActivityLogScreen() {
                         </View>
 
                         <View style={styles.formGroup}>
-                            <Text style={styles.label}>Attribute Improved</Text>
+                            <Text style={styles.label}>{isNegative ? "Attribute Affected" : "Attribute Improved"}</Text>
                             {Platform.OS === 'ios' ? (
                                 <View style={styles.pickerContainer}>
                                     <Picker
@@ -235,29 +259,33 @@ export default function ActivityLogScreen() {
                         </View>
 
                         <View style={styles.formGroup}>
-                            <Text style={styles.label}>Points Earned (1-5)</Text>
+                            <Text style={styles.label}>Impact Level (1-5)</Text>
                             <View style={styles.pointsContainer}>
-                                <Text style={styles.pointsHint}>Less effort</Text>
+                                <Text style={styles.pointsHint}>Slight</Text>
                                 {[1, 2, 3, 4, 5].map((value) => (
                                     <TouchableOpacity
                                         key={value}
                                         style={[
                                             styles.pointButton,
-                                            parseInt(points) === value && styles.activePointButton
+                                            pointsValue === value && (
+                                                isNegative ? styles.negativePointButton : styles.positivePointButton
+                                            )
                                         ]}
-                                        onPress={() => setPoints(value.toString())}
+                                        onPress={() => setPointsValue(value)}
                                     >
                                         <Text
                                             style={[
                                                 styles.pointButtonText,
-                                                parseInt(points) === value && styles.activePointButtonText
+                                                pointsValue === value && (
+                                                    isNegative ? styles.negativePointButtonText : styles.positivePointButtonText
+                                                )
                                             ]}
                                         >
                                             {value}
                                         </Text>
                                     </TouchableOpacity>
                                 ))}
-                                <Text style={styles.pointsHint}>More effort</Text>
+                                <Text style={styles.pointsHint}>Significant</Text>
                             </View>
                             {errors.points ? <Text style={styles.errorText}>{errors.points}</Text> : null}
                         </View>
@@ -267,7 +295,13 @@ export default function ActivityLogScreen() {
                         <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
                             <Text style={styles.cancelButtonText}>Cancel</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                        <TouchableOpacity
+                            style={[
+                                styles.saveButton,
+                                isNegative && styles.negativeSaveButton
+                            ]}
+                            onPress={handleSave}
+                        >
                             <Text style={styles.saveButtonText}>Save Activity</Text>
                         </TouchableOpacity>
                     </View>
@@ -322,6 +356,20 @@ const styles = StyleSheet.create({
         ...theme.shadow.md,
         marginBottom: theme.spacing.lg,
     },
+    toggleContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: theme.spacing.lg,
+        paddingBottom: theme.spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colorBorder,
+    },
+    toggleLabel: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: theme.colorText,
+    },
     formGroup: {
         marginBottom: theme.spacing.lg,
     },
@@ -352,11 +400,13 @@ const styles = StyleSheet.create({
     picker: {
         height: 50,
         width: '100%',
+        backgroundColor: theme.colorBackground,
     },
     androidPicker: {
         height: 50,
         width: '100%',
         color: theme.colorText,
+        backgroundColor: theme.colorBackground,
     },
     pointsContainer: {
         flexDirection: 'row',
@@ -379,16 +429,23 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         margin: 4,
     },
-    activePointButton: {
+    positivePointButton: {
         backgroundColor: theme.colorPrimary,
         borderColor: theme.colorPrimary,
+    },
+    negativePointButton: {
+        backgroundColor: theme.colorDanger,
+        borderColor: theme.colorDanger,
     },
     pointButtonText: {
         fontSize: 16,
         fontWeight: 'bold',
         color: theme.colorTextSecondary,
     },
-    activePointButtonText: {
+    positivePointButtonText: {
+        color: 'white',
+    },
+    negativePointButtonText: {
         color: 'white',
     },
     buttonContainer: {
@@ -420,6 +477,9 @@ const styles = StyleSheet.create({
         marginLeft: 10,
         alignItems: 'center',
     },
+    negativeSaveButton: {
+        backgroundColor: theme.colorDanger,
+    },
     saveButtonText: {
         color: 'white',
         fontSize: 16,
@@ -429,17 +489,5 @@ const styles = StyleSheet.create({
         color: theme.colorDanger,
         fontSize: 14,
         marginTop: 5,
-    },
-    debugContainer: {
-        backgroundColor: '#fff3cd',
-        padding: 10,
-        marginBottom: 15,
-        borderRadius: 5,
-        borderWidth: 1,
-        borderColor: '#ffecb5',
-    },
-    debugTitle: {
-        fontWeight: 'bold',
-        marginBottom: 5,
     },
 });

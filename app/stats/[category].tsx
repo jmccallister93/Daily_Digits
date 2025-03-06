@@ -1,5 +1,4 @@
-// app/physical-stats.tsx
-import { useRouter, Stack } from "expo-router";
+import { useRouter, Stack, useLocalSearchParams } from "expo-router";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar } from "react-native";
 import { theme } from "../../theme";
 import { useState, useEffect } from "react";
@@ -7,45 +6,107 @@ import { useCharacter } from "../context/CharacterContext";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
-export default function PhysicalStatsScreen() {
+// Define category types and their properties
+type CategoryType = "physical" | "mind" | "spiritual";
+
+interface CategoryConfig {
+    title: string;
+    emoji: string;
+    subtitle: string;
+    colors: [string, string];
+    descriptions: { [key: string]: string };
+}
+
+const categoryConfigs: Record<CategoryType, CategoryConfig> = {
+    physical: {
+        title: "Physical",
+        emoji: "💪",
+        subtitle: "Strength, endurance, and physical wellness",
+        colors: ['#6366F1', '#8B5CF6'],
+        descriptions: {
+            "Strength": "Physical power and muscle development.",
+            "Endurance": "Stamina and ability to sustain physical effort.",
+            "Flexibility": "Range of motion and muscle elasticity.",
+            "Nutrition": "Quality of diet and food choices.",
+            "Sleep Quality": "Consistent, restful sleep patterns.",
+        }
+    },
+    mind: {
+        title: "Mind",
+        emoji: "🧠",
+        subtitle: "Knowledge, creativity, and mental skills",
+        colors: ['#3B82F6', '#06B6D4'],
+        descriptions: {
+            "Knowledge": "Facts, information, and skills acquired through experience or education.",
+            "Creativity": "Use of imagination to create original ideas or solutions.",
+            "Problem Solving": "Ability to find solutions to difficult or complex issues.",
+            "Focus": "Ability to concentrate attention on a task without distraction.",
+            "Learning": "Acquisition of new skills, concepts, or understanding.",
+        }
+    },
+    spiritual: {
+        title: "Spiritual",
+        emoji: "✨",
+        subtitle: "Relationships, purpose, and emotional health",
+        colors: ['#EC4899', '#8B5CF6'],
+        descriptions: {
+            "Relationships": "Quality of connections with friends, family, and partners.",
+            "Self-Awareness": "Understanding of one's own character, feelings, motives, and desires.",
+            "Gratitude": "Appreciation for the positive aspects of life.",
+            "Purpose": "Sense of meaning and direction in life.",
+            "Happiness": "Overall subjective well-being and life satisfaction."
+        }
+    }
+};
+
+export default function DynamicStatsScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams();
     const { characterSheet } = useCharacter();
+
+    // Get category from URL params
+    const rawCategory = typeof params.category === 'string' ? params.category : 'physical';
+
+    // Validate and set the category
+    const isCategoryValid = (cat: string): cat is CategoryType => {
+        return cat === 'physical' || cat === 'mind' || cat === 'spiritual';
+    };
+
+    const category: CategoryType = isCategoryValid(rawCategory) ? rawCategory : 'physical';
+
+    // Get the config for this category
+    const config = categoryConfigs[category];
 
     const [stats, setStats] = useState<{ name: string; value: number }[]>([]);
     const [totalScore, setTotalScore] = useState(0);
-
-    // This is a fixed category screen for physical stats
-    const category = "physical";
 
     useEffect(() => {
         if (characterSheet[category]) {
             setStats(characterSheet[category].stats);
             setTotalScore(characterSheet[category].score);
         }
-    }, [characterSheet]);
+    }, [characterSheet, category]);
 
     const handleBackPress = () => {
-        router.back();
+        router.navigate("/");
     };
 
     const handleAddActivity = () => {
-        // Navigate to activity log with physical category
-        console.log("Navigating to activity log with category:", category);
-        router.push(`/activities/activity-log?category=${category}`);
+        // Navigate to activity log with the current category
+        const currentPath = `/stats/${category}`;
+        router.push({
+            pathname: "/activities/activity-log",
+            params: {
+                category: category,
+                from: currentPath
+            }
+        });
     };
 
-    // Generate a description for each attribute
+    // Get description for the attribute
     const getAttributeDescription = (statName: string) => {
-        const descriptions: { [key: string]: string } = {
-            // Physical attributes
-            "Strength": "Physical power and muscle development.",
-            "Endurance": "Stamina and ability to sustain physical effort.",
-            "Flexibility": "Range of motion and muscle elasticity.",
-            "Nutrition": "Quality of diet and food choices.",
-            "Sleep Quality": "Consistent, restful sleep patterns.",
-        };
-
-        return descriptions[statName] || "Improve this attribute through consistent practice and dedication.";
+        return config.descriptions[statName] ||
+            "Improve this attribute through consistent practice and dedication.";
     };
 
     return (
@@ -55,7 +116,7 @@ export default function PhysicalStatsScreen() {
                 <StatusBar barStyle="light-content" />
 
                 <LinearGradient
-                    colors={['#6366F1', '#8B5CF6'] as [string, string]}
+                    colors={config.colors}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.headerGradient}
@@ -66,10 +127,10 @@ export default function PhysicalStatsScreen() {
 
                     <View style={styles.headerContent}>
                         <View style={styles.headerTitle}>
-                            <Text style={styles.emoji}>💪</Text>
-                            <Text style={styles.title}>Physical</Text>
+                            <Text style={styles.emoji}>{config.emoji}</Text>
+                            <Text style={styles.title}>{config.title}</Text>
                         </View>
-                        <Text style={styles.subtitle}>Strength, endurance, and physical wellness</Text>
+                        <Text style={styles.subtitle}>{config.subtitle}</Text>
 
                         <View style={styles.scoreContainer}>
                             <Text style={styles.scoreLabel}>Total Score</Text>

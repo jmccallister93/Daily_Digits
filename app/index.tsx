@@ -11,13 +11,7 @@ export default function App() {
   const router = useRouter();
 
   const handleBoxPress = (category: "physical" | "mind" | "spiritual") => {
-    // Using direct string paths with the correct folder structure
-    const path = category === "physical"
-      ? "/stats/physical-stats" // Keep the typo to match your file
-      : `/stats/${category}-stats`;
-
-    console.log("Navigating to:", path);
-    router.push(path);
+    router.push(`/stats/${category}`);
   };
 
   const getCategoryIcon = (category: string) => {
@@ -36,8 +30,8 @@ export default function App() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Character Sheet</Text>
-        <Text style={styles.subtitle}>Track your personal development</Text>
+        <Text style={styles.title}>Daily Digits</Text>
+        <Text style={styles.subtitle}>Track your journey.</Text>
       </View>
 
       <View style={styles.cardsContainer}>

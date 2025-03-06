@@ -1,21 +1,21 @@
-// app/mind-stats.tsx
+// app/spiritual-stats.tsx
 import { useRouter, Stack } from "expo-router";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar } from "react-native";
-import { theme } from "../../theme";
+import { theme } from "../theme";
 import { useState, useEffect } from "react";
-import { useCharacter } from "../context/CharacterContext";
+import { useCharacter } from "../app/context/CharacterContext";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
-export default function MindStatsScreen() {
+export default function SpiritualStatsScreen() {
     const router = useRouter();
     const { characterSheet } = useCharacter();
 
     const [stats, setStats] = useState<{ name: string; value: number }[]>([]);
     const [totalScore, setTotalScore] = useState(0);
 
-    // This is a fixed category screen for mind stats
-    const category = "mind";
+    // This is a fixed category screen for spiritual stats
+    const category = "spiritual";
 
     useEffect(() => {
         if (characterSheet[category]) {
@@ -25,24 +25,25 @@ export default function MindStatsScreen() {
     }, [characterSheet]);
 
     const handleBackPress = () => {
-        router.back();
+        router.navigate("/");
     };
 
     const handleAddActivity = () => {
-        // Navigate to activity log with mind category
+        // Navigate to activity log with spiritual category
         console.log("Navigating to activity log with category:", category);
         router.push(`/activities/activity-log?category=${category}`);
+
     };
 
     // Generate a description for each attribute
     const getAttributeDescription = (statName: string) => {
         const descriptions: { [key: string]: string } = {
-            // Mind attributes
-            "Knowledge": "Facts, information, and skills acquired through experience or education.",
-            "Creativity": "Use of imagination to create original ideas or solutions.",
-            "Problem Solving": "Ability to find solutions to difficult or complex issues.",
-            "Focus": "Ability to concentrate attention on a task without distraction.",
-            "Learning": "Acquisition of new skills, concepts, or understanding.",
+            // Spiritual attributes
+            "Relationships": "Quality of connections with friends, family, and partners.",
+            "Self-Awareness": "Understanding of one's own character, feelings, motives, and desires.",
+            "Gratitude": "Appreciation for the positive aspects of life.",
+            "Purpose": "Sense of meaning and direction in life.",
+            "Happiness": "Overall subjective well-being and life satisfaction."
         };
 
         return descriptions[statName] || "Improve this attribute through consistent practice and dedication.";
@@ -55,7 +56,7 @@ export default function MindStatsScreen() {
                 <StatusBar barStyle="light-content" />
 
                 <LinearGradient
-                    colors={['#3B82F6', '#06B6D4'] as [string, string]}
+                    colors={['#EC4899', '#8B5CF6'] as [string, string]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.headerGradient}
@@ -66,10 +67,10 @@ export default function MindStatsScreen() {
 
                     <View style={styles.headerContent}>
                         <View style={styles.headerTitle}>
-                            <Text style={styles.emoji}>🧠</Text>
-                            <Text style={styles.title}>Mind</Text>
+                            <Text style={styles.emoji}>✨</Text>
+                            <Text style={styles.title}>Spiritual</Text>
                         </View>
-                        <Text style={styles.subtitle}>Knowledge, creativity, and mental skills</Text>
+                        <Text style={styles.subtitle}>Relationships, purpose, and emotional health</Text>
 
                         <View style={styles.scoreContainer}>
                             <Text style={styles.scoreLabel}>Total Score</Text>

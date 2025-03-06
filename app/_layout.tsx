@@ -37,7 +37,7 @@ export default function Layout() {
                 <Tabs.Screen
                     name="index"
                     options={{
-                        title: "Character",
+                        title: "Home",
                         tabBarIcon: ({ color, size }) => (
                             <MaterialCommunityIcons name="account" size={size} color={color} />
                         ),
@@ -56,24 +56,24 @@ export default function Layout() {
                 <Tabs.Screen
                     name="stats/physical-stats"
                     options={{
-
-                        tabBarButton: () => null,
+                        href: null,
+                        // tabBarButton: () => null,
                         headerShown: false
                     }}
                 />
                 <Tabs.Screen
                     name="mind-stats"
                     options={{
-
-                        tabBarButton: () => null,
+                        href: null,
+                        // tabBarButton: () => null,
                         headerShown: false
                     }}
                 />
                 <Tabs.Screen
                     name="spiritual-stats"
                     options={{
-
-                        tabBarButton: () => null,
+                        href: null,
+                        // tabBarButton: () => null,
                         headerShown: false
                     }}
                 />
@@ -98,7 +98,7 @@ export default function Layout() {
                 <Tabs.Screen
                     name="activities"
                     options={{
-                        // tabBarButton: () => null,
+                        //tabBarButton: () => null,
                         href: null,
                         headerShown: false
                     }}
