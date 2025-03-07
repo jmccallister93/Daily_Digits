@@ -2,14 +2,14 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ScrollVi
 import { theme } from "../theme";
 import { useCharacter } from "./context/CharacterContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 
 // Define the types for your data structures
 interface Activity {
     id: string;
     date: string;
     activity: string;
-    category: "physical" | "mind" | "social" | string;
+    category: string;
     stat: string;
     points: number;
 }
@@ -18,22 +18,19 @@ interface DayGrouping {
     date: string;
     activities: Activity[];
     totals: {
-        physical: number;
-        mind: number;
-        social: number;
-        [key: string]: number;
+        [categoryId: string]: number;
     };
     totalPoints: number;
 }
 
 interface FilterState {
-    category: "all" | "physical" | "mind" | "social" | string;
+    category: string; // changed from enum to string
     stat: string;
     searchQuery: string;
 }
 
 export default function ActivityHistoryScreen(): JSX.Element {
-    const { activityLog } = useCharacter();
+    const { activityLog, characterSheet } = useCharacter();
     const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
     const [filters, setFilters] = useState<FilterState>({
         category: "all",
@@ -41,6 +38,28 @@ export default function ActivityHistoryScreen(): JSX.Element {
         searchQuery: "",
     });
     const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+    const [categoryMap, setCategoryMap] = useState<Record<string, { name: string, gradient: [string, string], icon: string }>>({});
+
+    // Create a map of category IDs to their display information
+    useEffect(() => {
+        const categories = characterSheet.categories;
+        const map: Record<string, { name: string, gradient: [string, string], icon: string }> = {};
+
+        Object.entries(categories).forEach(([id, category]) => {
+            map[id] = {
+                name: category.name,
+                gradient: category.gradient,
+                icon: category.icon
+            };
+        });
+
+        setCategoryMap(map);
+    }, [characterSheet]);
+
+    // Get all available categories for filters
+    const availableCategories = useMemo(() => {
+        return Object.keys(characterSheet.categories);
+    }, [characterSheet]);
 
     // Highlight search terms in text
     const highlightSearchTerms = (text: string, query: string): JSX.Element => {
@@ -87,13 +106,16 @@ export default function ActivityHistoryScreen(): JSX.Element {
             filteredActivities = filteredActivities.filter((activity: Activity) => {
                 const activityText = activity.activity.toLowerCase();
                 const statText = activity.stat.toLowerCase();
-                const categoryText = activity.category.toLowerCase();
+                const categoryId = activity.category;
+
+                // Get category name if available
+                const categoryName = categoryMap[categoryId]?.name?.toLowerCase() || '';
 
                 // Check if any search term is found in activity description, stat name, or category
                 return searchTerms.some(term =>
                     activityText.includes(term) ||
                     statText.includes(term) ||
-                    categoryText.includes(term)
+                    categoryName.includes(term)
                 );
             });
         }
@@ -111,16 +133,21 @@ export default function ActivityHistoryScreen(): JSX.Element {
         // Calculate totals and format for FlatList
         const result: DayGrouping[] = Object.keys(groups).map((dateString: string) => {
             const dayActivities = groups[dateString];
-            const totals: DayGrouping['totals'] = {
-                physical: 0,
-                mind: 0,
-                social: 0,
-            };
+            const totals: Record<string, number> = {};
+
+            // Initialize totals for all categories
+            availableCategories.forEach(categoryId => {
+                totals[categoryId] = 0;
+            });
 
             // Calculate totals for each category
             dayActivities.forEach((activity: Activity) => {
-                if (totals[activity.category] !== undefined) {
-                    totals[activity.category] += activity.points;
+                const categoryId = activity.category;
+                if (totals[categoryId] !== undefined) {
+                    totals[categoryId] += activity.points;
+                } else {
+                    // If this is a category we haven't seen before, initialize it
+                    totals[categoryId] = activity.points;
                 }
             });
 
@@ -140,7 +167,7 @@ export default function ActivityHistoryScreen(): JSX.Element {
                 ? dateB.getTime() - dateA.getTime()
                 : dateA.getTime() - dateB.getTime();
         });
-    }, [activityLog, filters, sortOrder]);
+    }, [activityLog, filters, sortOrder, categoryMap, availableCategories]);
 
     // Toggle expansion of a day card
     const toggleDayExpansion = (date: string): void => {
@@ -156,14 +183,29 @@ export default function ActivityHistoryScreen(): JSX.Element {
     };
 
     // Format date for display
+    // Fixed formatDate function
     const formatDate = (dateString: string): string => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString("en-US", {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-        });
+        // First check if it's already in locale format
+        if (dateString.includes('/')) {
+            // It's already in locale format, parse carefully
+            const [month, day, year] = dateString.split('/');
+            const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+            return date.toLocaleDateString("en-US", {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+            });
+        } else {
+            // It's in ISO format
+            const date = new Date(dateString);
+            return date.toLocaleDateString("en-US", {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+            });
+        }
     };
 
     // Get all unique stats for filter options
@@ -175,32 +217,31 @@ export default function ActivityHistoryScreen(): JSX.Element {
         return Array.from(stats);
     }, [activityLog]);
 
-    // Get category color
-    const getCategoryColor = (category: string): string => {
-        switch (category) {
-            case "physical":
-                return theme.colorSuccess;
-            case "mind":
-                return theme.colorPrimary;
-            case "social":
-                return theme.colorSecondary;
-            default:
-                return theme.colorAccent;
+    // Get category color from gradient
+    const getCategoryColor = (categoryId: string): string => {
+        const category = categoryMap[categoryId];
+        if (category) {
+            // Return the first color of the gradient
+            return category.gradient[0];
         }
+        return theme.colorPrimary; // Default color if category not found
     };
 
     // Get category icon
-    const getCategoryIcon = (category: string, size: number = 18): JSX.Element => {
-        switch (category) {
-            case "physical":
-                return <MaterialCommunityIcons name="arm-flex" size={size} color="white" />;
-            case "mind":
-                return <MaterialCommunityIcons name="brain" size={size} color="white" />;
-            case "social":
-                return <MaterialCommunityIcons name="meditation" size={size} color="white" />;
-            default:
-                return <MaterialCommunityIcons name="star" size={size} color="white" />;
+    const getCategoryIcon = (categoryId: string, size: number = 18): JSX.Element => {
+        const category = categoryMap[categoryId];
+
+        if (category) {
+            return <Text style={{ fontSize: size }}>{category.icon}</Text>;
         }
+
+        // Fallback icon if category not found
+        return <MaterialCommunityIcons name="star" size={size} color="white" />;
+    };
+
+    // Get category name for display
+    const getCategoryName = (categoryId: string): string => {
+        return categoryMap[categoryId]?.name || 'Unknown';
     };
 
     // If no activities logged yet
@@ -278,23 +319,23 @@ export default function ActivityHistoryScreen(): JSX.Element {
                                 All
                             </Text>
                         </TouchableOpacity>
-                        {["physical", "mind", "social"].map((cat: string) => (
+                        {Object.entries(categoryMap).map(([id, category]) => (
                             <TouchableOpacity
-                                key={cat}
+                                key={id}
                                 style={[
                                     styles.filterChip,
-                                    filters.category === cat && styles.filterChipActive,
-                                    { backgroundColor: filters.category === cat ? getCategoryColor(cat) : "transparent" }
+                                    filters.category === id && styles.filterChipActive,
+                                    { backgroundColor: filters.category === id ? getCategoryColor(id) : "transparent" }
                                 ]}
-                                onPress={() => setFilters({ ...filters, category: cat })}
+                                onPress={() => setFilters({ ...filters, category: id })}
                             >
                                 <Text
                                     style={[
                                         styles.filterChipText,
-                                        filters.category === cat && styles.filterChipTextActive,
+                                        filters.category === id && styles.filterChipTextActive,
                                     ]}
                                 >
-                                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                                    {category.name}
                                 </Text>
                             </TouchableOpacity>
                         ))}
@@ -406,17 +447,17 @@ export default function ActivityHistoryScreen(): JSX.Element {
                             </View>
 
                             <View style={styles.dayStats}>
-                                {["physical", "mind", "social"].map((category: string) => (
-                                    item.totals[category] > 0 && (
+                                {Object.entries(item.totals).map(([categoryId, points]) => (
+                                    points > 0 && (
                                         <View
-                                            key={category}
+                                            key={categoryId}
                                             style={[
                                                 styles.dayStatBadge,
-                                                { backgroundColor: getCategoryColor(category) }
+                                                { backgroundColor: getCategoryColor(categoryId) }
                                             ]}
                                         >
-                                            {getCategoryIcon(category, 14)}
-                                            <Text style={styles.dayStatText}>+{item.totals[category]}</Text>
+                                            {getCategoryIcon(categoryId, 14)}
+                                            <Text style={styles.dayStatText}>+{points}</Text>
                                         </View>
                                     )
                                 ))}
@@ -441,7 +482,7 @@ export default function ActivityHistoryScreen(): JSX.Element {
                                             >
                                                 {getCategoryIcon(activity.category)}
                                                 <Text style={styles.categoryText}>
-                                                    {activity.category.charAt(0).toUpperCase() + activity.category.slice(1)}
+                                                    {getCategoryName(activity.category)}
                                                 </Text>
                                             </View>
                                         </View>
@@ -456,7 +497,9 @@ export default function ActivityHistoryScreen(): JSX.Element {
                                         <View style={styles.statsRow}>
                                             <View style={styles.statBadge}>
                                                 <Text style={styles.statName}>{activity.stat}</Text>
-                                                <Text style={styles.statPoints}>+{activity.points}</Text>
+                                                <Text style={styles.statPoints}>
+                                                    {activity.points > 0 ? '+' : ''}{activity.points}
+                                                </Text>
                                             </View>
                                         </View>
                                     </View>

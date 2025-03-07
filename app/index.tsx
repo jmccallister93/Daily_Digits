@@ -1,10 +1,11 @@
 // app/index.tsx
-import { StyleSheet, View, Text, TouchableOpacity, FlatList } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, FlatList, Image } from "react-native";
 import { theme } from "../theme";
 import { useRouter } from "expo-router";
 import { StatCategory, useCharacter } from "./context/CharacterContext";
 import { LinearGradient } from "expo-linear-gradient";
 import SplashScreen from "./components/SplashScreen";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function App() {
   const { characterSheet, isLoading } = useCharacter();
@@ -14,8 +15,13 @@ export default function App() {
     router.push(`/stats/${categoryId}`);
   };
 
+  const navigateToCategoryManager = () => {
+    router.push("/category-manager");
+  };
+
   // Get all categories from the context
   const categories = Object.values(characterSheet.categories);
+  const hasCategories = categories.length > 0;
 
   // Render a category card
   const renderCategoryCard = (category: StatCategory) => (
@@ -57,14 +63,44 @@ export default function App() {
         <Text style={styles.subtitle}>Track your journey.</Text>
       </View>
 
-      <View style={styles.cardsContainer}>
-        <FlatList
-          data={categories}
-          renderItem={({ item }) => renderCategoryCard(item)}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.flatListContent}
-        />
-      </View>
+      {hasCategories ? (
+        <View style={styles.cardsContainer}>
+          <FlatList
+            data={categories}
+            renderItem={({ item }) => renderCategoryCard(item)}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.flatListContent}
+          />
+        </View>
+      ) : (
+        <View style={styles.emptyStateContainer}>
+          <MaterialCommunityIcons
+            name="notebook-outline"
+            size={80}
+            color={theme.colorTextSecondary}
+            style={styles.emptyStateIcon}
+          />
+          <Text style={styles.emptyStateTitle}>No Categories Yet</Text>
+          <Text style={styles.emptyStateText}>
+            Create your first category to start tracking your skills and progress
+          </Text>
+
+          <TouchableOpacity
+            style={styles.getStartedButton}
+            onPress={navigateToCategoryManager}
+          >
+            <LinearGradient
+              colors={['#6366F1', '#8B5CF6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.getStartedGradient}
+            >
+              <Text style={styles.getStartedText}>Get Started</Text>
+              <MaterialCommunityIcons name="arrow-right" size={24} color="white" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -144,5 +180,47 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: 'white',
+  },
+  // Empty state styles
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.xl,
+  },
+  emptyStateIcon: {
+    marginBottom: theme.spacing.lg,
+  },
+  emptyStateTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: theme.colorText,
+    marginBottom: theme.spacing.md,
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: theme.colorTextSecondary,
+    textAlign: 'center',
+    marginBottom: theme.spacing.xl,
+  },
+  getStartedButton: {
+    width: '100%',
+    borderRadius: theme.borderRadius.lg,
+    overflow: 'hidden',
+    ...theme.shadow.md,
+    marginTop: theme.spacing.lg,
+  },
+  getStartedGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing.lg,
+  },
+  getStartedText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginRight: theme.spacing.sm,
   },
 });

@@ -15,6 +15,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { theme } from '../theme';
 import { useCharacter } from './context/CharacterContext';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { BackHandler } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 // Define color presets for gradients
@@ -27,12 +28,41 @@ const COLOR_PRESETS: [string, string][] = [
     ['#14B8A6', '#06B6D4'], // Teal to Cyan
     ['#F97316', '#F59E0B'], // Orange to Amber
     ['#6366F1', '#EC4899'], // Indigo to Pink
+    ['#8B5CF6', '#D946EF'], // Purple to Fuchsia
+    ['#06B6D4', '#0EA5E9'], // Cyan to Sky Blue
+    ['#10B981', '#34D399'], // Emerald to Green
+    ['#EF4444', '#B91C1C'], // Red to Dark Red
+    ['#F97316', '#EA580C'], // Orange to Burnt Orange
+    ['#84CC16', '#4D7C0F'], // Lime to Dark Green
+    ['#0369A1', '#1E40AF'], // Ocean Blue to Dark Blue
+    ['#4F46E5', '#7C3AED'], // Indigo to Violet
 ];
 
 // Available emoji icons
 const ICON_OPTIONS = [
-    '💪', '🧠', '✨', '🏃', '🧘', '🎯', '📚', '🎨', '🎵', '💰',
-    '🏠', '🌱', '🌍', '❤️', '👨‍👩‍👧‍👦', '🙏', '🔧', '⚽', '🎮', '🎭'
+    // Physical & Health
+    '💪', '🏃', '🧘', '🏋️', '⚡', '🥗', '💤', '🧬', '🫀', '🦾',
+
+    // Mental & Learning
+    '🧠', '📚', '🔍', '💡', '🧩', '🎓', '✏️', '🔬', '🧮', '📊',
+
+    // Creative
+    '🎨', '🎵', '🎭', '📷', '🎬', '🎸', '🎹', '✍️', '🖌️', '🎤',
+
+    // Social & Emotional
+    '❤️', '👨‍👩‍👧‍👦', '🙏', '😊', '🤝', '💬', '🫂', '🌈', '✨', '😌',
+
+    // Career & Finance
+    '💰', '💼', '📈', '🏆', '⏰', '💻', '📱', '🔧', '🛠️', '🚀',
+
+    // Lifestyle & Environment
+    '🏠', '🌱', '🌍', '🌞', '⛰️', '🌊', '🌲', '🍃', '🧭', '🗺️',
+
+    // Hobbies & Activities
+    '⚽', '🎮', '🎯', '♟️', '🎣', '🎾', '🚴', '🏄', '🧩', '📝',
+
+    // Miscellaneous
+    '🔮', '💫', '⭐', '🔥', '🛡️', '🏹', '🧿', '🧸', '🎪', '🎲'
 ];
 
 // Interface for our stat
@@ -92,6 +122,8 @@ export default function CategoryManager() {
         setInitialScore('10');
         setCategoryStats([]);
         setEditingCategory(null);
+        setModalVisible(false);
+        setAttributeModalVisible(false);
     };
 
     // Reset attribute form
@@ -109,6 +141,7 @@ export default function CategoryManager() {
 
     // Open modal to edit an existing category
     const handleEditCategory = (categoryId: string) => {
+
         const category = characterSheet.categories[categoryId];
         if (!category) return;
 
@@ -189,6 +222,7 @@ export default function CategoryManager() {
         }
 
         const scoreNum = parseInt(initialScore, 10) || 10;
+        let savedCategoryId = editingCategory;
 
         if (editingCategory) {
             // Update existing category
@@ -201,7 +235,10 @@ export default function CategoryManager() {
                 stats: categoryStats
             });
         } else {
-            // Create new category
+            // Create new category and capture the new ID
+            // Assuming addCategory returns the new ID or we can access it somehow
+            const newId = Date.now().toString(); // Fallback if addCategory doesn't return ID
+
             addCategory({
                 name: categoryName,
                 description: categoryDescription,
@@ -210,28 +247,26 @@ export default function CategoryManager() {
                 score: scoreNum,
                 stats: categoryStats
             });
+
+            // Use the new ID for navigation
+            savedCategoryId = newId;
         }
 
+        // Close the modal and reset form
         setModalVisible(false);
         resetForm();
 
-        // If we were directed here from the category screen, navigate back
-        if (initialCategoryId) {
-            router.back();
+        // Navigate to the category page using the ID
+        if (savedCategoryId) {
+            setTimeout(() => {
+                // Use replace instead of push to clear the current route's params
+                router.replace(`/stats/${savedCategoryId}`);
+            }, 100);
         }
     };
 
     // Handle deleting a category
     const handleDeleteCategory = (categoryId: string) => {
-        // Don't allow deletion of default categories
-        if (['physical', 'mind', 'social'].includes(categoryId)) {
-            Alert.alert(
-                'Cannot Delete',
-                'Default categories cannot be deleted, but you can customize them.'
-            );
-            return;
-        }
-
         Alert.alert(
             'Confirm Delete',
             'Are you sure you want to delete this category? All associated activities will remain in your history.',
@@ -258,6 +293,35 @@ export default function CategoryManager() {
         router.back();
     };
 
+    // Add this useEffect inside your component
+    useEffect(() => {
+        const backAction = () => {
+            if (modalVisible) {
+                setModalVisible(false);
+                return true;
+            }
+            if (attributeModalVisible) {
+                setAttributeModalVisible(false);
+                return true;
+            }
+            return false;
+        };
+
+        const backHandler = BackHandler.addEventListener(
+            'hardwareBackPress',
+            backAction
+        );
+
+        return () => backHandler.remove();
+    }, [modalVisible, attributeModalVisible]);
+
+    // useEffect(() => {
+    //     console.log("Effect triggered - initialCategoryId:", initialCategoryId);
+    //     if (initialCategoryId && characterSheet.categories[initialCategoryId]) {
+    //         handleEditCategory(initialCategoryId);
+    //     }
+    // }, [initialCategoryId, characterSheet]);
+
     return (
         <View style={styles.container}>
             {/* Header with back button */}
@@ -272,7 +336,7 @@ export default function CategoryManager() {
             </View>
 
             <ScrollView style={styles.categoriesList}>
-                {characterSheet && characterSheet.categories && Object.keys(characterSheet.categories).length > 0 ?
+                {characterSheet && characterSheet.categories && Object.keys(characterSheet.categories).length > 0 &&
                     Object.values(characterSheet.categories).map((category) => (
                         <View key={category.id} style={styles.categoryCard}>
                             <LinearGradient
@@ -300,54 +364,19 @@ export default function CategoryManager() {
                                         <Text style={styles.editButtonText}>Edit</Text>
                                     </TouchableOpacity>
 
-                                    {!['physical', 'mind', 'social'].includes(category.id) && (
-                                        <TouchableOpacity
-                                            style={styles.deleteButton}
-                                            onPress={() => handleDeleteCategory(category.id)}
-                                        >
-                                            <MaterialCommunityIcons name="delete" size={18} color={theme.colorDanger} />
-                                            <Text style={styles.deleteButtonText}>Delete</Text>
-                                        </TouchableOpacity>
-                                    )}
-                                </View>
-                            </View>
-                        </View>
-                    ))
-                    :
-                    // Show loading or create fallback categories from physical, mind, social
-                    [
-                        characterSheet.physical,
-                        characterSheet.mind,
-                        characterSheet.social
-                    ].filter(Boolean).map((category) => (
-                        <View key={category.id} style={styles.categoryCard}>
-                            <LinearGradient
-                                colors={category.gradient as [string, string]}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
-                                style={styles.cardHeader}
-                            >
-                                <View style={styles.iconContainer}>
-                                    <Text style={styles.icon}>{category.icon}</Text>
-                                </View>
-                                <Text style={styles.categoryName}>{category.name}</Text>
-                                <Text style={styles.categoryScore}>{category.score}</Text>
-                            </LinearGradient>
 
-                            <View style={styles.cardBody}>
-                                <Text style={styles.categoryDescription}>{category.description}</Text>
-
-                                <View style={styles.actionButtons}>
                                     <TouchableOpacity
-                                        style={styles.editButton}
-                                        onPress={() => handleEditCategory(category.id)}
+                                        style={styles.deleteButton}
+                                        onPress={() => handleDeleteCategory(category.id)}
                                     >
-                                        <MaterialCommunityIcons name="pencil" size={18} color={theme.colorPrimary} />
-                                        <Text style={styles.editButtonText}>Edit</Text>
+                                        <MaterialCommunityIcons name="delete" size={18} color={theme.colorDanger} />
+                                        <Text style={styles.deleteButtonText}>Delete</Text>
                                     </TouchableOpacity>
+
                                 </View>
                             </View>
                         </View>
+
                     ))
                 }
             </ScrollView>
@@ -387,7 +416,8 @@ export default function CategoryManager() {
                                 style={styles.textInput}
                                 value={categoryName}
                                 onChangeText={setCategoryName}
-                                placeholder="e.g., Creative, Financial"
+                                placeholder="e.g., Physical, Financial"
+                                placeholderTextColor={theme.colorTextLight}
                             />
 
                             <Text style={styles.inputLabel}>Description</Text>
@@ -398,6 +428,7 @@ export default function CategoryManager() {
                                 placeholder="What this category represents..."
                                 multiline
                                 numberOfLines={3}
+                                placeholderTextColor={theme.colorTextLight}
                             />
 
                             <Text style={styles.inputLabel}>Starting Score</Text>
@@ -407,6 +438,7 @@ export default function CategoryManager() {
                                 onChangeText={setInitialScore}
                                 keyboardType="number-pad"
                                 placeholder="10"
+                                placeholderTextColor={theme.colorTextLight}
                             />
 
                             <Text style={styles.inputLabel}>Icon</Text>
@@ -516,14 +548,7 @@ export default function CategoryManager() {
                                 </LinearGradient>
                             </View>
 
-                            {editingCategory && ['physical', 'mind', 'social'].includes(editingCategory) && (
-                                <View style={styles.defaultCategoryNote}>
-                                    <MaterialCommunityIcons name="information" size={20} color={theme.colorWarning} />
-                                    <Text style={styles.defaultCategoryNoteText}>
-                                        This is a default category and cannot be deleted.
-                                    </Text>
-                                </View>
-                            )}
+
                         </ScrollView>
 
                         <View style={styles.modalFooter}>
@@ -573,6 +598,7 @@ export default function CategoryManager() {
                                 value={attributeName}
                                 onChangeText={setAttributeName}
                                 placeholder="e.g., Strength, Creativity, Focus"
+                                placeholderTextColor={theme.colorTextLight}
                             />
 
                             <Text style={styles.inputLabel}>Current Value</Text>
@@ -582,6 +608,7 @@ export default function CategoryManager() {
                                 onChangeText={setAttributeValue}
                                 keyboardType="number-pad"
                                 placeholder="0"
+                                placeholderTextColor={theme.colorTextLight}
                             />
 
                             <Text style={styles.attributeHelpText}>

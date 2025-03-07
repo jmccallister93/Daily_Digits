@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar } from 
 import { theme } from "../../theme";
 import { useState, useEffect } from "react";
 import { useCharacter } from "../context/CharacterContext";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 // Import the StatCategory type from your context
@@ -136,9 +136,22 @@ export default function DynamicStatsScreen() {
                         ))}
                     </ScrollView>
 
-                    <TouchableOpacity style={styles.addButton} onPress={handleAddActivity}>
-                        <Text style={styles.addButtonText}>Log Activity</Text>
-                    </TouchableOpacity>
+                    <View style={styles.buttonContainer}>
+                        <TouchableOpacity style={styles.addButton} onPress={handleAddActivity}>
+                            <Text style={styles.addButtonText}>Log Activity</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.editCategoryButton}
+                            onPress={() => router.push({
+                                pathname: '/category-manager',
+                                params: { categoryId: categoryId }
+                            })}
+                        >
+                            <MaterialCommunityIcons name="pencil" size={20} color={theme.colorPrimaryDark} />
+                            <Text style={styles.editCategoryButtonText}>Edit Category</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
         </>
@@ -275,16 +288,35 @@ const styles = StyleSheet.create({
         height: '100%',
         backgroundColor: theme.colorPrimary,
     },
+    buttonContainer: {
+        marginTop: theme.spacing.md,
+    },
     addButton: {
         backgroundColor: theme.colorPrimary,
         borderRadius: theme.borderRadius.md,
         padding: theme.spacing.md,
         alignItems: 'center',
         ...theme.shadow.sm,
+        marginBottom: theme.spacing.md,
     },
     addButtonText: {
         color: 'white',
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    editCategoryButton: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: theme.colorPrimaryLight,
+        borderRadius: theme.borderRadius.md,
+        padding: theme.spacing.md,
+        ...theme.shadow.sm,
+    },
+    editCategoryButtonText: {
+        color: theme.colorPrimaryDark,
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginLeft: theme.spacing.xs,
     },
 });

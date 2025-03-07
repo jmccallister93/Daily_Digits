@@ -8,7 +8,7 @@ type Stat = {
     value: number;
 };
 
-// New StatCategory type to support customizable categories
+// StatCategory type for customizable categories
 export type StatCategory = {
     id: string;
     name: string;
@@ -19,13 +19,9 @@ export type StatCategory = {
     stats: Stat[];
 };
 
-// Updated CharacterSheet with categories map
+// Simplified CharacterSheet with just categories map
 type CharacterSheet = {
     categories: Record<string, StatCategory>;
-    // Keep these for backward compatibility
-    physical: StatCategory;
-    mind: StatCategory;
-    social: StatCategory;
 };
 
 type ActivityLog = {
@@ -41,11 +37,11 @@ type ActivityLog = {
 type CharacterContextType = {
     characterSheet: CharacterSheet;
     activityLog: ActivityLog[];
-    isLoading: boolean;  // New loading state
+    isLoading: boolean;
     updateStat: (categoryId: string, statName: string, points: number) => void;
     logActivity: (activity: string, categoryId: string, stat: string, points: number) => void;
-    // New functions for category management
-    addCategory: (category: Omit<StatCategory, 'id'>) => void;
+    // Category management
+    addCategory: (category: Omit<StatCategory, 'id'>) => string;
     updateCategory: (id: string, updates: Partial<StatCategory>) => void;
     deleteCategory: (id: string) => void;
     // Activity management
@@ -53,107 +49,47 @@ type CharacterContextType = {
     deleteActivity: (id: string) => void;
 };
 
-// Default categories with IDs
-const DEFAULT_CATEGORIES: Record<string, StatCategory> = {
-    physical: {
-        id: 'physical',
-        name: 'Physical',
-        description: 'Strength, dexterity, and endurance',
-        score: 10,
-        icon: '💪',
-        gradient: ['#6366F1', '#8B5CF6'],
-        stats: [
-            { name: "Strength", value: 0 },
-            { name: "Endurance", value: 0 },
-            { name: "Flexibility", value: 0 },
-            { name: "Nutrition", value: 0 },
-            { name: "Sleep Quality", value: 0 }
-        ]
-    },
-    mind: {
-        id: 'mind',
-        name: 'Mind',
-        description: 'Intelligence, wisdom, and focus',
-        score: 10,
-        icon: '🧠',
-        gradient: ['#3B82F6', '#06B6D4'],
-        stats: [
-            { name: "Knowledge", value: 0 },
-            { name: "Creativity", value: 0 },
-            { name: "Problem Solving", value: 0 },
-            { name: "Focus", value: 0 },
-            { name: "Learning", value: 0 }
-        ]
-    },
-    social: {
-        id: 'social',
-        name: 'Social',
-        description: 'Faith, willpower, and mindfulness',
-        score: 10,
-        icon: '✨',
-        gradient: ['#EC4899', '#8B5CF6'],
-        stats: [
-            { name: "Relationships", value: 0 },
-            { name: "Self-Awareness", value: 0 },
-            { name: "Gratitude", value: 0 },
-            { name: "Purpose", value: 0 },
-            { name: "Happiness", value: 0 }
-        ]
-    }
-};
-
-// Updated default character sheet structure
+// Create completely empty default character sheet
 const DEFAULT_CHARACTER_SHEET: CharacterSheet = {
-    categories: DEFAULT_CATEGORIES,
-    // For backward compatibility, we maintain references
-    physical: DEFAULT_CATEGORIES.physical,
-    mind: DEFAULT_CATEGORIES.mind,
-    social: DEFAULT_CATEGORIES.social,
+    categories: {}
 };
 
 const CharacterContext = createContext<CharacterContextType | undefined>(undefined);
 
 export const CharacterProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [characterSheet, setCharacterSheet] = useState<CharacterSheet>({
-        ...DEFAULT_CHARACTER_SHEET,
-        categories: { ...DEFAULT_CATEGORIES }, // Ensure categories is explicitly initialized
-        physical: DEFAULT_CATEGORIES.physical,
-        mind: DEFAULT_CATEGORIES.mind,
-        social: DEFAULT_CATEGORIES.social
+        ...DEFAULT_CHARACTER_SHEET
     });
     const [activityLog, setActivityLog] = useState<ActivityLog[]>([]);
-    const [isLoading, setIsLoading] = useState(true); // Initialize loading state as true
+    const [isLoading, setIsLoading] = useState(true);
 
     // Load saved data on app start
     useEffect(() => {
         const loadData = async () => {
-            setIsLoading(true); // Set loading to true before fetching data
+            setIsLoading(true);
             try {
                 const savedCharacterSheet = await AsyncStorage.getItem('characterSheet');
                 const savedActivityLog = await AsyncStorage.getItem('activityLog');
 
                 if (savedCharacterSheet) {
-                    const parsedSheet = JSON.parse(savedCharacterSheet) as CharacterSheet;
+                    const parsedSheet = JSON.parse(savedCharacterSheet);
+                    // If loading from old format, migrate to new format
+                    if (parsedSheet.physical || parsedSheet.mind || parsedSheet.social) {
+                        // Extract categories from old format and create new sheet
+                        const newCategories: Record<string, StatCategory> = {};
 
-                    // Ensure the sheet has all required properties
-                    // If loading an older format, migrate it to the new format
-                    const updatedSheet: CharacterSheet = {
-                        categories: parsedSheet.categories || {},
-                        physical: parsedSheet.physical || DEFAULT_CHARACTER_SHEET.physical,
-                        mind: parsedSheet.mind || DEFAULT_CHARACTER_SHEET.mind,
-                        social: parsedSheet.social || DEFAULT_CHARACTER_SHEET.social,
-                    };
+                        // Only add old categories if they exist
+                        if (parsedSheet.categories) {
+                            Object.assign(newCategories, parsedSheet.categories);
+                        }
 
-                    // If no categories exist yet (old format), create them from the existing data
-                    if (!parsedSheet.categories || Object.keys(parsedSheet.categories).length === 0) {
-                        updatedSheet.categories = {
-                            physical: updatedSheet.physical,
-                            mind: updatedSheet.mind,
-                            social: updatedSheet.social,
-                        };
+                        setCharacterSheet({
+                            categories: newCategories
+                        });
+                    } else {
+                        // Already in the new format
+                        setCharacterSheet(parsedSheet);
                     }
-
-                    setCharacterSheet(updatedSheet);
                 }
 
                 if (savedActivityLog) {
@@ -162,10 +98,8 @@ export const CharacterProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             } catch (error) {
                 console.error('Error loading saved data:', error);
             } finally {
-                // Simulate a brief delay to ensure splash screen is visible
-                // Remove this setTimeout in production if not needed
                 setTimeout(() => {
-                    setIsLoading(false); // Set loading to false after data is loaded
+                    setIsLoading(false);
                 }, 1000);
             }
         };
@@ -210,15 +144,6 @@ export const CharacterProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             // Recalculate the category score (base 10 + sum of all stat values)
             categoryObj.score = 10 + categoryObj.stats.reduce((sum, stat) => sum + stat.value, 0);
 
-            // Update the direct category reference if it's one of the main three
-            if (categoryId === 'physical') {
-                newSheet.physical = categoryObj;
-            } else if (categoryId === 'mind') {
-                newSheet.mind = categoryObj;
-            } else if (categoryId === 'social') {
-                newSheet.social = categoryObj;
-            }
-
             return newSheet;
         });
     };
@@ -227,7 +152,7 @@ export const CharacterProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const logActivity = (activity: string, categoryId: string, stat: string, points: number) => {
         // Create a new activity log entry
         const newActivity: ActivityLog = {
-            id: Date.now().toString(), // Simple ID for now
+            id: Date.now().toString(),
             date: new Date().toISOString(),
             activity,
             category: categoryId,
@@ -243,7 +168,7 @@ export const CharacterProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     // Add a new category
-    const addCategory = (category: Omit<StatCategory, 'id'>) => {
+    const addCategory = (category: Omit<StatCategory, 'id'>): string => {
         const id = Date.now().toString(); // Use timestamp as a simple unique ID
 
         const newCategory: StatCategory = {
@@ -263,6 +188,8 @@ export const CharacterProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 categories: updatedCategories,
             };
         });
+
+        return id; // Return the new ID
     };
 
     // Update an existing category
@@ -280,32 +207,15 @@ export const CharacterProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 [id]: updatedCategory
             };
 
-            // Update reference properties if this is one of the default categories
-            const updatedSheet = {
+            return {
                 ...prevSheet,
                 categories: updatedCategories,
             };
-
-            if (id === 'physical') {
-                updatedSheet.physical = updatedCategory;
-            } else if (id === 'mind') {
-                updatedSheet.mind = updatedCategory;
-            } else if (id === 'social') {
-                updatedSheet.social = updatedCategory;
-            }
-
-            return updatedSheet;
         });
     };
 
     // Delete a category
     const deleteCategory = (id: string) => {
-        // Prevent deletion of the three main categories
-        if (id === 'physical' || id === 'mind' || id === 'social') {
-            console.warn('Cannot delete default categories');
-            return;
-        }
-
         setCharacterSheet(prevSheet => {
             const updatedCategories = { ...prevSheet.categories };
             delete updatedCategories[id];
@@ -342,7 +252,7 @@ export const CharacterProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         <CharacterContext.Provider value={{
             characterSheet,
             activityLog,
-            isLoading, // Add isLoading to the context
+            isLoading,
             updateStat,
             logActivity,
             addCategory,
