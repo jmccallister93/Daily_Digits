@@ -553,7 +553,7 @@ export default function CategoryManager() {
                                         <View key={index} style={styles.attributeItem}>
                                             <View style={styles.attributeInfo}>
                                                 <Text style={styles.attributeName}>{stat.name}</Text>
-                                                <Text style={styles.attributeValue}>+{stat.value}</Text>
+                                                <Text style={styles.attributeValue}>{stat.value}</Text>
                                             </View>
                                             <View style={styles.attributeActions}>
                                                 <TouchableOpacity

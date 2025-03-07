@@ -62,6 +62,8 @@ const DecaySettingsComponent: React.FC<DecaySettingsProps> = ({
         }
     }, [isVisible, categoryId, statName]);
 
+
+
     const handleSave = () => {
         // Validate inputs
         const points = parseInt(decayPoints, 10);

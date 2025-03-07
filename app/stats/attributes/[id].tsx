@@ -181,7 +181,7 @@ export default function AttributeDetailScreen() {
 
                         <View style={styles.scoreContainer}>
                             <Text style={styles.scoreLabel}>Value</Text>
-                            <Text style={styles.scoreValue}>+{stat.value}</Text>
+                            <Text style={styles.scoreValue}>{stat.value}</Text>
                         </View>
                     </View>
 

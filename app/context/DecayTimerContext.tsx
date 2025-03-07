@@ -192,11 +192,14 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setDecaySettings(prev => {
             if (!prev[key]) return prev;
 
+            // Simply use the current time without resetting to midnight
+            const now = new Date();
+
             return {
                 ...prev,
                 [key]: {
                     ...prev[key],
-                    lastUpdate: new Date().toISOString() // Reset to now
+                    lastUpdate: now.toISOString()
                 }
             };
         });
