@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar } from 
 import { theme } from "../../theme";
 import { useState, useEffect } from "react";
 import { useCharacter } from "../context/CharacterContext";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { DecaySetting, useDecayTimer } from '../context/DecayTimerContext';
 
 // Import the StatCategory type from your context
 type Stat = {
@@ -21,11 +22,107 @@ type StatCategory = {
     gradient: [string, string];
     stats: Stat[];
 };
+type StatCardProps = {
+    stat: Stat;
+    categoryId: string;
+    onPress: () => void;
+    decaySetting: DecaySetting | null;
+};
+// Stat Card Component with countdown timer and click navigation
+const StatCard: React.FC<StatCardProps> = ({ stat, categoryId, onPress, decaySetting }) => {
+    const [timeUntilDecay, setTimeUntilDecay] = useState('');
+    const hasDecay = decaySetting && decaySetting.enabled;
+
+    // Update countdown timer
+    useEffect(() => {
+        if (!hasDecay) {
+            setTimeUntilDecay('');
+            return;
+        }
+
+        const calculateTimeRemaining = () => {
+            const now = new Date();
+            const lastUpdate = new Date(decaySetting.lastUpdate);
+
+            // Add decay days to last update to get next decay time
+            const nextDecay = new Date(lastUpdate);
+            nextDecay.setDate(nextDecay.getDate() + decaySetting.days);
+
+            // Calculate time difference
+            const timeDiff = nextDecay.getTime() - now.getTime();
+
+            if (timeDiff <= 0) {
+                return 'Due now';
+            }
+
+            // Calculate days, hours, minutes
+            const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+
+            if (days > 0) {
+                return `${days}d ${hours}h ${minutes}m`;
+            } else {
+                return `${hours}h ${minutes}m`;
+            }
+        };
+
+        // Initial calculation
+        setTimeUntilDecay(calculateTimeRemaining());
+
+        // Update timer every minute
+        const interval = setInterval(() => {
+            setTimeUntilDecay(calculateTimeRemaining());
+        }, 60000);
+
+        return () => clearInterval(interval);
+    }, [decaySetting, hasDecay]);
+
+    return (
+        <TouchableOpacity style={styles.statCard} onPress={onPress}>
+            <View style={styles.statHeader}>
+                <Text style={styles.statName}>{stat.name}</Text>
+                <View style={styles.statHeaderRight}>
+                    {hasDecay && (
+                        <View style={styles.decayIndicator}>
+                            <MaterialIcons name="timer" size={14} color={theme.colorWarning} />
+                            <Text style={styles.decayText}>
+                                -{decaySetting.points} in {timeUntilDecay}
+                            </Text>
+                        </View>
+                    )}
+                    <View style={styles.statValueContainer}>
+                        <Text style={styles.statValue}>{stat.value}</Text>
+                    </View>
+                </View>
+            </View>
+
+            <Text style={styles.statDescription}>
+                Improve this attribute through consistent practice and dedication.
+            </Text>
+
+            {/* <View style={styles.progressBar}>
+                <View
+                    style={[
+                        styles.progressFill,
+                        { width: `${Math.min(100, (stat.value * 10) + 5)}%` }
+                    ]}
+                />
+            </View> */}
+
+            <View style={styles.viewDetailRow}>
+                <Text style={styles.viewDetailText}>View activity history</Text>
+                <MaterialIcons name="arrow-forward" size={16} color={theme.colorTextSecondary} />
+            </View>
+        </TouchableOpacity>
+    );
+};
 
 export default function DynamicStatsScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const { characterSheet, isLoading } = useCharacter();
+    const { getDecaySettingForStat } = useDecayTimer();
 
     // Get category ID from URL params
     const categoryId = typeof params.category === 'string' ? params.category : 'physical';
@@ -64,6 +161,18 @@ export default function DynamicStatsScreen() {
             params: {
                 category: categoryId,
                 from: currentPath
+            }
+        });
+    };
+
+    // Navigate to attribute detail page
+    const navigateToAttributeDetail = (stat: Stat) => {
+        router.push({
+            pathname: '/stats/attributes/[id]',  // Updated to match your file structure
+            params: {
+                id: stat.name,
+                categoryId: categoryId,
+                statName: stat.name
             }
         });
     };
@@ -129,37 +238,25 @@ export default function DynamicStatsScreen() {
                     <Text style={styles.sectionTitle}>Attributes</Text>
 
                     <ScrollView style={styles.statsList}>
-                        {stats.map((stat, index) => (
-                            <View key={index} style={styles.statCard}>
-                                <View style={styles.statHeader}>
-                                    <Text style={styles.statName}>{stat.name}</Text>
-                                    <View style={styles.statValueContainer}>
-                                        <Text style={styles.statValue}>+{stat.value}</Text>
-                                    </View>
-                                </View>
+                        {stats.map((stat, index) => {
+                            const decaySetting = getDecaySettingForStat(categoryId, stat.name);
 
-                                <Text style={styles.statDescription}>
-                                    Improve this attribute through consistent practice and dedication.
-                                </Text>
-
-                                <View style={styles.progressBar}>
-                                    <View
-                                        style={[
-                                            styles.progressFill,
-                                            { width: `${Math.min(100, (stat.value * 10) + 5)}%` }
-                                        ]}
-                                    />
-                                </View>
-                            </View>
-                        ))}
+                            return (
+                                <StatCard
+                                    key={index}
+                                    stat={stat}
+                                    categoryId={categoryId}
+                                    decaySetting={decaySetting}
+                                    onPress={() => navigateToAttributeDetail(stat)}
+                                />
+                            );
+                        })}
                     </ScrollView>
 
                     <View style={styles.buttonContainer}>
                         <TouchableOpacity style={styles.addButton} onPress={handleAddActivity}>
                             <Text style={styles.addButtonText}>Log Activity</Text>
                         </TouchableOpacity>
-
-
                     </View>
                 </View>
             </View>
@@ -210,7 +307,6 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
         justifyContent: 'center',
         alignItems: 'center',
-        // marginRight: theme.spacing.md,
         marginLeft: theme.spacing.sm,
     },
     emoji: {
@@ -253,7 +349,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: theme.spacing.md,
     },
-
     statsContainer: {
         flex: 1,
         padding: theme.spacing.lg,
@@ -316,8 +411,6 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colorPrimary,
     },
     buttonContainer: {
-        // flexDirection: "row",
-        // justifyContent: "space-between",
         marginTop: theme.spacing.md,
     },
     addButton: {
@@ -333,20 +426,50 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
-    editCategoryButton: {
+    statHeaderRight: {
         flexDirection: 'row',
-        justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: theme.colorPrimaryLight,
-        borderRadius: theme.borderRadius.md,
-        padding: theme.spacing.md,
-        marginBottom: theme.spacing.md,
-        ...theme.shadow.sm,
     },
-    editCategoryButtonText: {
-        color: theme.colorPrimaryDark,
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginLeft: theme.spacing.xs,
+    decayIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        borderRadius: theme.borderRadius.sm,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        marginRight: theme.spacing.sm,
+    },
+    decayText: {
+        fontSize: 12,
+        color: theme.colorWarning,
+        fontWeight: '500',
+        marginLeft: 2,
+    },
+    decayInfoContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: theme.spacing.sm,
+        padding: theme.spacing.xs,
+        backgroundColor: 'rgba(245, 158, 11, 0.05)',
+        borderRadius: theme.borderRadius.sm,
+    },
+    decayInfoText: {
+        fontSize: 12,
+        color: theme.colorWarning,
+        marginLeft: 4,
+        flex: 1,
+    },
+    viewDetailRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: theme.spacing.sm,
+        paddingTop: theme.spacing.sm,
+        borderTopWidth: 1,
+        borderTopColor: theme.colorBorder,
+    },
+    viewDetailText: {
+        fontSize: 12,
+        color: theme.colorTextSecondary,
     },
 });

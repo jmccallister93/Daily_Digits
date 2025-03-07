@@ -1,7 +1,7 @@
 // app/context/DecayTimerContext.tsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCharacter, StatCategory } from './CharacterContext';
+import { useCharacter } from './CharacterContext';
 
 // Define the structure for decay settings
 export type DecaySetting = {
@@ -88,6 +88,7 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return () => clearInterval(checkInterval);
     }, [decaySettings, isLoading]);
 
+
     // Reset timer when a new activity is logged
     useEffect(() => {
         if (isLoading || activityLog.length === 0) return;
@@ -95,8 +96,8 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         // Get the most recent activity
         const latestActivity = activityLog[activityLog.length - 1];
 
-        // If it's a new activity (not just a state update), reset the timer
-        if (latestActivity) {
+        // If it's a new activity AND the points are positive, reset the timer
+        if (latestActivity && latestActivity.points > 0) {
             const stats = Array.isArray(latestActivity.stat)
                 ? latestActivity.stat
                 : [latestActivity.stat];

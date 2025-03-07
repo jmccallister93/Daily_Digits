@@ -9,7 +9,8 @@ import {
     TextInput,
     Modal,
     Alert,
-    FlatList
+    FlatList,
+    Switch
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { theme } from '../theme';
@@ -17,6 +18,7 @@ import { useCharacter } from './context/CharacterContext';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { BackHandler } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useDecayTimer } from './context/DecayTimerContext';
 
 // Define color presets for gradients
 const COLOR_PRESETS: [string, string][] = [
@@ -84,6 +86,7 @@ interface StatCategory {
 
 export default function CategoryManager() {
     const { characterSheet, updateCategory, addCategory, deleteCategory } = useCharacter();
+    const { getDecaySettingForStat, addDecaySetting, updateDecaySetting, removeDecaySetting } = useDecayTimer();
     const router = useRouter();
     const params = useLocalSearchParams();
 
@@ -105,6 +108,11 @@ export default function CategoryManager() {
     // For attribute editing
     const [attributeName, setAttributeName] = useState('');
     const [attributeValue, setAttributeValue] = useState('0');
+
+    // decay variables
+    const [decayEnabled, setDecayEnabled] = useState(false);
+    const [decayPoints, setDecayPoints] = useState('1');
+    const [decayDays, setDecayDays] = useState('3');
 
     // If a category ID is provided in the URL, open that category for editing when component mounts
     useEffect(() => {
@@ -130,6 +138,9 @@ export default function CategoryManager() {
     const resetAttributeForm = () => {
         setAttributeName('');
         setAttributeValue('0');
+        setDecayEnabled(false);
+        setDecayPoints('1');
+        setDecayDays('3');
         setEditingAttributeIndex(null);
     };
 
@@ -167,6 +178,21 @@ export default function CategoryManager() {
         setAttributeName(attribute.name);
         setAttributeValue(attribute.value.toString());
         setEditingAttributeIndex(index);
+
+        // Load decay settings if available
+        if (editingCategory) {
+            const existingSetting = getDecaySettingForStat(editingCategory, attribute.name);
+            if (existingSetting) {
+                setDecayEnabled(existingSetting.enabled);
+                setDecayPoints(existingSetting.points.toString());
+                setDecayDays(existingSetting.days.toString());
+            } else {
+                setDecayEnabled(false);
+                setDecayPoints('1');
+                setDecayDays('3');
+            }
+        }
+
         setAttributeModalVisible(true);
     };
 
@@ -183,11 +209,36 @@ export default function CategoryManager() {
         if (editingAttributeIndex !== null) {
             // Update existing attribute
             const updatedStats = [...categoryStats];
+
+            // If the attribute name changed, we need to remove old decay setting
+            if (editingCategory && attributeName !== updatedStats[editingAttributeIndex].name) {
+                const oldKey = `${editingCategory}-${updatedStats[editingAttributeIndex].name}`;
+                removeDecaySetting(oldKey);
+            }
+
             updatedStats[editingAttributeIndex] = newAttribute;
             setCategoryStats(updatedStats);
         } else {
             // Add new attribute
             setCategoryStats([...categoryStats, newAttribute]);
+        }
+
+        // Save decay settings
+        if (editingCategory && decayEnabled) {
+            const points = parseInt(decayPoints, 10) || 1;
+            const days = parseInt(decayDays, 10) || 3;
+
+            addDecaySetting({
+                categoryId: editingCategory,
+                statName: attributeName,
+                points: points,
+                days: days,
+                enabled: true
+            });
+        } else if (editingCategory) {
+            // If decay is disabled, remove any existing setting
+            const key = `${editingCategory}-${attributeName}`;
+            removeDecaySetting(key);
         }
 
         setAttributeModalVisible(false);
@@ -591,7 +642,7 @@ export default function CategoryManager() {
                             </TouchableOpacity>
                         </View>
 
-                        <View style={styles.attributeModalForm}>
+                        <ScrollView style={styles.attributeModalForm}>
                             <Text style={styles.inputLabel}>Attribute Name</Text>
                             <TextInput
                                 style={styles.textInput}
@@ -614,7 +665,59 @@ export default function CategoryManager() {
                             <Text style={styles.attributeHelpText}>
                                 This value represents the progress made in this attribute. It will be added to the base score.
                             </Text>
-                        </View>
+
+                            {/* Decay Settings Section */}
+                            <View style={styles.decaySection}>
+                                <View style={styles.sectionHeaderRow}>
+                                    <Text style={styles.sectionTitle}>Decay Timer</Text>
+                                    <Switch
+                                        value={decayEnabled}
+                                        onValueChange={setDecayEnabled}
+                                        trackColor={{ false: theme.colorBorder, true: theme.colorWarning }}
+                                        thumbColor="#fff"
+                                    />
+                                </View>
+
+                                <Text style={styles.decayDescription}>
+                                    When enabled, this attribute will decrease over time if no activities are logged.
+                                    This encourages consistent practice.
+                                </Text>
+
+                                {decayEnabled && (
+                                    <>
+                                        <View style={styles.decayInputRow}>
+                                            <View style={styles.decayInputContainer}>
+                                                <Text style={styles.decayInputLabel}>Points</Text>
+                                                <TextInput
+                                                    style={styles.decayInput}
+                                                    value={decayPoints}
+                                                    onChangeText={setDecayPoints}
+                                                    keyboardType="number-pad"
+                                                    placeholder="1"
+                                                    placeholderTextColor={theme.colorTextLight}
+                                                />
+                                            </View>
+
+                                            <View style={styles.decayInputContainer}>
+                                                <Text style={styles.decayInputLabel}>Every (days)</Text>
+                                                <TextInput
+                                                    style={styles.decayInput}
+                                                    value={decayDays}
+                                                    onChangeText={setDecayDays}
+                                                    keyboardType="number-pad"
+                                                    placeholder="3"
+                                                    placeholderTextColor={theme.colorTextLight}
+                                                />
+                                            </View>
+                                        </View>
+
+                                        <Text style={styles.decayPreview}>
+                                            {attributeName || 'This attribute'} will decrease by {decayPoints} point{parseInt(decayPoints, 10) !== 1 ? 's' : ''} every {decayDays} day{parseInt(decayDays, 10) !== 1 ? 's' : ''} if no activities are logged.
+                                        </Text>
+                                    </>
+                                )}
+                            </View>
+                        </ScrollView>
 
                         <View style={styles.modalFooter}>
                             <TouchableOpacity
@@ -789,9 +892,7 @@ const styles = StyleSheet.create({
         borderRadius: theme.borderRadius.lg,
         ...theme.shadow.lg,
     },
-    attributeModalContent: {
-        maxHeight: '60%', // Smaller modal for attribute editing
-    },
+
     modalHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -812,9 +913,7 @@ const styles = StyleSheet.create({
         padding: theme.spacing.lg,
         maxHeight: 500,
     },
-    attributeModalForm: {
-        padding: theme.spacing.lg,
-    },
+
     inputLabel: {
         fontSize: 16,
         fontWeight: '500',
@@ -963,7 +1062,58 @@ const styles = StyleSheet.create({
         padding: 8,
         marginLeft: theme.spacing.sm,
     },
-    // Add these styles to the existing StyleSheet.create({...}) object
+    attributeModalContent: {
+        maxHeight: '80%', // Increase height for decay settings
+    },
+    attributeModalForm: {
+        padding: theme.spacing.lg,
+    },
+    decaySection: {
+        marginTop: theme.spacing.md,
+        padding: theme.spacing.md,
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        borderRadius: theme.borderRadius.md,
+        borderWidth: 1,
+        borderColor: 'rgba(245, 158, 11, 0.3)',
+    },
+    decayDescription: {
+        fontSize: 14,
+        color: theme.colorTextSecondary,
+        marginBottom: theme.spacing.md,
+        lineHeight: 18,
+    },
+    decayInputRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: theme.spacing.md,
+    },
+    decayInputContainer: {
+        width: '48%',
+    },
+    decayInputLabel: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: theme.colorTextSecondary,
+        marginBottom: 4,
+    },
+    decayInput: {
+        backgroundColor: theme.colorCard,
+        borderWidth: 1,
+        borderColor: theme.colorBorder,
+        borderRadius: theme.borderRadius.md,
+        padding: theme.spacing.sm,
+        fontSize: 16,
+        color: theme.colorText,
+    },
+    decayPreview: {
+        fontSize: 14,
+        color: theme.colorWarning,
+        fontWeight: '500',
+        padding: theme.spacing.sm,
+        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+        borderRadius: theme.borderRadius.sm,
+    },
+
 
     modalFooter: {
         flexDirection: 'row',
