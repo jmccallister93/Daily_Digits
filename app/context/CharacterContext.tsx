@@ -24,12 +24,12 @@ type CharacterSheet = {
     categories: Record<string, StatCategory>;
 };
 
-type ActivityLog = {
+export type ActivityLog = {
     id: string;
     date: string;
     activity: string;
     category: string;
-    stat: string;
+    stat: string | string[];
     points: number;
 };
 
@@ -39,13 +39,13 @@ type CharacterContextType = {
     activityLog: ActivityLog[];
     isLoading: boolean;
     updateStat: (categoryId: string, statName: string, points: number) => void;
-    logActivity: (activity: string, categoryId: string, stat: string, points: number) => void;
+    logActivity: (activity: string, categoryId: string, stat: string | string[], points: number) => void;
     // Category management
     addCategory: (category: Omit<StatCategory, 'id'>) => string;
     updateCategory: (id: string, updates: Partial<StatCategory>) => void;
     deleteCategory: (id: string) => void;
     // Activity management
-    editActivity: (id: string, updates: Partial<ActivityLog>) => void;
+    editActivity: (id: string, updates: Partial<Omit<ActivityLog, 'stat'> & { stat?: string | string[] }>) => void;
     deleteActivity: (id: string) => void;
 };
 
@@ -149,23 +149,38 @@ export const CharacterProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     // Log a new activity
-    const logActivity = (activity: string, categoryId: string, stat: string, points: number) => {
+    // Log a new activity
+    const logActivity = (activity: string, categoryId: string, stats: string | string[], points: number) => {
         // Create a new activity log entry
-        const newActivity: ActivityLog = {
-            id: Date.now().toString(),
-            date: new Date().toISOString(),
+        const timestamp = new Date().toISOString();
+        const activityId = Date.now().toString();
+
+        // Create the activity object (works for both single stat and array of stats)
+        const newActivity = {
+            id: activityId,
+            date: timestamp,
             activity,
             category: categoryId,
-            stat,
+            stat: stats, // This can be a string or string[] 
             points
         };
 
-        // Add to activity log
-        setActivityLog(prevLog => [...prevLog, newActivity]);
+        // Add the new activity to the log
+        setActivityLog((prev: any) => [...prev, newActivity]);
 
-        // Update the corresponding stat
-        updateStat(categoryId, stat, points);
+        // Update each affected stat's value in the character sheet
+        if (Array.isArray(stats)) {
+            // Update multiple stats
+            stats.forEach(statName => {
+                // Update stat using the existing updateStat function
+                updateStat(categoryId, statName, points);
+            });
+        } else {
+            // Handle single stat (for backward compatibility)
+            updateStat(categoryId, stats, points);
+        }
     };
+
 
     // Add a new category
     const addCategory = (category: Omit<StatCategory, 'id'>): string => {
@@ -234,8 +249,34 @@ export const CharacterProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             if (activityIndex === -1) return prevLog;
 
             const updatedLog = [...prevLog];
+            const originalActivity = updatedLog[activityIndex];
+
+            // If we're updating the stat field, handle removing/adding stat points appropriately
+            if (updates.stat !== undefined || updates.points !== undefined) {
+                const oldStats = Array.isArray(originalActivity.stat)
+                    ? originalActivity.stat
+                    : [originalActivity.stat];
+                const oldPoints = originalActivity.points;
+
+                // Remove old stat points
+                oldStats.forEach(statName => {
+                    updateStat(originalActivity.category, statName, -oldPoints);
+                });
+
+                // Add new stat points if we have them
+                const newStats = updates.stat !== undefined
+                    ? (Array.isArray(updates.stat) ? updates.stat : [updates.stat])
+                    : oldStats;
+                const newPoints = updates.points !== undefined ? updates.points : oldPoints;
+
+                newStats.forEach(statName => {
+                    updateStat(originalActivity.category, statName, newPoints);
+                });
+            }
+
+            // Update the activity with the new data
             updatedLog[activityIndex] = {
-                ...updatedLog[activityIndex],
+                ...originalActivity,
                 ...updates
             };
 

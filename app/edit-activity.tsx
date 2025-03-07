@@ -1,20 +1,20 @@
+// EditActivityScreen.tsx
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, Switch } from "react-native";
-import { theme } from "../../theme";
+import { theme } from "../theme";
 import { useState, useEffect } from "react";
-import { Picker } from "@react-native-picker/picker";
-import { useCharacter } from "../context/CharacterContext";
+import { ActivityLog, useCharacter } from "./context/CharacterContext";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
-export default function ActivityLogScreen() {
+export default function EditActivityScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
 
-    // Get categoryId from URL parameters
-    const categoryId = typeof params.category === 'string' ? params.category : undefined;
+    // Get activityId from URL parameters
+    const activityId = typeof params.id === 'string' ? params.id : undefined;
 
-    const { characterSheet, logActivity } = useCharacter();
+    const { characterSheet, activityLog, editActivity, deleteActivity } = useCharacter();
 
     const [activity, setActivity] = useState("");
     const [selectedStats, setSelectedStats] = useState<string[]>([]);
@@ -23,38 +23,59 @@ export default function ActivityLogScreen() {
     const [errors, setErrors] = useState({ activity: "", stat: "", points: "" });
     const [availableStats, setAvailableStats] = useState<string[]>([]);
     const [categoryName, setCategoryName] = useState("");
+    const [categoryId, setCategoryId] = useState("");
     const [categoryGradient, setCategoryGradient] = useState<[string, string]>(['#6366F1', '#8B5CF6']);
+    const [originalActivity, setOriginalActivity] = useState<any>(null);
 
-    // Set up available stats based on selected category
+    // Load the activity data
     useEffect(() => {
-        if (!categoryId || !characterSheet.categories[categoryId]) {
-            // If no category ID or invalid category, redirect back
-            console.error("Invalid category ID:", categoryId);
+        if (!activityId) {
+            console.error("No activity ID provided");
             router.back();
             return;
         }
 
-        const category = characterSheet.categories[categoryId];
+        // Find the activity in the log
+        const activityToEdit = activityLog.find(a => a.id === activityId);
 
-        // Set category name and gradient for UI
-        setCategoryName(category.name);
-        setCategoryGradient(category.gradient);
-
-        // Set up available stats
-        if (category.stats && category.stats.length > 0) {
-            const stats = category.stats.map(stat => stat.name);
-            setAvailableStats(stats);
-
-            // Preselect the first stat
-            if (stats.length > 0) {
-                setSelectedStats([]);
-            }
-        } else {
-            // No stats available
-            setAvailableStats([]);
+        if (!activityToEdit) {
+            console.error("Activity not found:", activityId);
+            router.back();
+            return;
         }
-    }, [categoryId, characterSheet]);
 
+        setOriginalActivity(activityToEdit);
+        setActivity(activityToEdit.activity);
+        setCategoryId(activityToEdit.category);
+
+        // Handle points - check if negative
+        const points = activityToEdit.points;
+        setIsNegative(points < 0);
+        setPointsValue(Math.abs(points));
+
+        // Handle stats (could be string or array)
+        if (Array.isArray(activityToEdit.stat)) {
+            setSelectedStats(activityToEdit.stat);
+        } else {
+            setSelectedStats([activityToEdit.stat]);
+        }
+
+        // Set up category info
+        const category = characterSheet.categories[activityToEdit.category];
+        if (category) {
+            setCategoryName(category.name);
+            setCategoryGradient(category.gradient);
+
+            // Set up available stats for this category
+            if (category.stats && category.stats.length > 0) {
+                setAvailableStats(category.stats.map(stat => stat.name));
+            } else {
+                setAvailableStats([]);
+            }
+        }
+    }, [activityId, activityLog, characterSheet]);
+
+    // Toggle stat selection
     const toggleStatSelection = (stat: string) => {
         setSelectedStats(prev => {
             if (prev.includes(stat)) {
@@ -65,18 +86,6 @@ export default function ActivityLogScreen() {
                 return [...prev, stat];
             }
         });
-    };
-
-    const previousScreen = typeof params.from === 'string' ? params.from : undefined;
-
-    const handleCancel = () => {
-        if (previousScreen) {
-            // Navigate directly to the previous screen
-            router.push(previousScreen);
-        } else {
-            // Fallback to a default screen like activity history
-            router.push("/activity-history");
-        }
     };
 
     const validateForm = () => {
@@ -102,35 +111,49 @@ export default function ActivityLogScreen() {
         return valid;
     };
 
+    const handleCancel = () => {
+        router.back();
+    };
+
     const handleSave = () => {
-        if (!validateForm() || !categoryId) return;
+        if (!validateForm() || !categoryId || !activityId) return;
 
         // Apply negative sign if the negative toggle is on
         const finalPoints = isNegative ? -pointsValue : pointsValue;
 
-        // Pass the entire selectedStats array to logActivity
-        // instead of calling it multiple times
-        logActivity(
+        // Create the updates object with the correct type for stat
+        const updates: Partial<Omit<ActivityLog, 'stat'> & { stat?: string | string[] }> = {
             activity,
-            categoryId,
-            selectedStats, // This is now an array of selected stats
-            finalPoints
-        );
+            points: finalPoints
+        };
 
-        setActivity("");
+        // Add the stat field with the correct type
+        updates.stat = selectedStats.length === 1 ? selectedStats[0] : selectedStats;
+
+        // Update the activity
+        editActivity(activityId, updates);
 
         // Navigate back
         router.back();
     };
 
-    // Get examples of activities for the selected category
-    const getActivityExamples = () => {
-        if (isNegative) {
-            return `E.g., 'Skipped practice', 'Made a mistake in ${categoryName}'`;
-        } else {
-            return `E.g., 'Made progress in ${categoryName}', 'Practiced for 30 minutes'`;
-        }
+    const handleDelete = () => {
+        if (!activityId) return;
+
+        // Delete the activity
+        deleteActivity(activityId);
+
+        // Navigate back
+        router.back();
     };
+
+    if (!originalActivity) {
+        return (
+            <View style={styles.loadingContainer}>
+                <Text>Loading...</Text>
+            </View>
+        );
+    }
 
     return (
         <>
@@ -146,7 +169,7 @@ export default function ActivityLogScreen() {
                         <Ionicons name="arrow-back" size={24} color="white" />
                     </TouchableOpacity>
 
-                    <Text style={styles.title}>{categoryName} Activity</Text>
+                    <Text style={styles.title}>Edit {categoryName} Activity</Text>
                     <Text style={styles.subtitle}>
                         {isNegative
                             ? `What negatively affected your ${categoryName} attributes?`
@@ -177,7 +200,7 @@ export default function ActivityLogScreen() {
                                 style={styles.input}
                                 value={activity}
                                 onChangeText={setActivity}
-                                placeholder={getActivityExamples()}
+                                placeholder={`What did you do related to ${categoryName}?`}
                                 placeholderTextColor={theme.colorTextLight}
                                 multiline
                                 numberOfLines={3}
@@ -257,6 +280,9 @@ export default function ActivityLogScreen() {
                     </View>
 
                     <View style={styles.buttonContainer}>
+                        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+                            <Text style={styles.deleteButtonText}>Delete</Text>
+                        </TouchableOpacity>
                         <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
                             <Text style={styles.cancelButtonText}>Cancel</Text>
                         </TouchableOpacity>
@@ -267,7 +293,7 @@ export default function ActivityLogScreen() {
                             ]}
                             onPress={handleSave}
                         >
-                            <Text style={styles.saveButtonText}>Save Activity</Text>
+                            <Text style={styles.saveButtonText}>Save</Text>
                         </TouchableOpacity>
                     </View>
                 </ScrollView>
@@ -280,6 +306,11 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: theme.colorBackground,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     header: {
         paddingTop: 50, // For status bar
@@ -355,23 +386,43 @@ const styles = StyleSheet.create({
         color: theme.colorText,
         minHeight: 100,
     },
-    pickerContainer: {
+    statsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginTop: theme.spacing.xs,
+    },
+    statButton: {
+        backgroundColor: theme.colorBackground,
         borderRadius: theme.borderRadius.md,
         borderWidth: 1,
         borderColor: theme.colorBorder,
-        overflow: 'hidden',
-        backgroundColor: theme.colorBackground,
+        paddingHorizontal: theme.spacing.md,
+        paddingVertical: theme.spacing.sm,
+        marginRight: theme.spacing.sm,
+        marginBottom: theme.spacing.sm,
+        flexDirection: 'row',
+        alignItems: 'center',
     },
-    picker: {
-        height: 50,
-        width: '100%',
-        backgroundColor: theme.colorBackground,
+    positiveStatButton: {
+        backgroundColor: theme.colorPrimary,
+        borderColor: theme.colorPrimary,
     },
-    androidPicker: {
-        height: 50,
-        width: '100%',
+    negativeStatButton: {
+        backgroundColor: theme.colorDanger,
+        borderColor: theme.colorDanger,
+    },
+    statButtonText: {
+        fontSize: 14,
         color: theme.colorText,
-        backgroundColor: theme.colorBackground,
+    },
+    positiveStatButtonText: {
+        color: 'white',
+    },
+    negativeStatButtonText: {
+        color: 'white',
+    },
+    checkIcon: {
+        marginLeft: theme.spacing.xs,
     },
     pointsContainer: {
         flexDirection: 'row',
@@ -424,7 +475,7 @@ const styles = StyleSheet.create({
         borderRadius: theme.borderRadius.md,
         padding: theme.spacing.md,
         flex: 1,
-        marginRight: 10,
+        marginHorizontal: 5,
         alignItems: 'center',
         borderWidth: 1,
         borderColor: theme.colorBorder,
@@ -439,7 +490,7 @@ const styles = StyleSheet.create({
         borderRadius: theme.borderRadius.md,
         padding: theme.spacing.md,
         flex: 1,
-        marginLeft: 10,
+        marginLeft: 5,
         alignItems: 'center',
     },
     negativeSaveButton: {
@@ -450,47 +501,24 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
+    deleteButton: {
+        backgroundColor: theme.colorBackground,
+        borderRadius: theme.borderRadius.md,
+        padding: theme.spacing.md,
+        flex: 1,
+        marginRight: 5,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: theme.colorDanger,
+    },
+    deleteButtonText: {
+        color: theme.colorDanger,
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
     errorText: {
         color: theme.colorDanger,
         fontSize: 14,
         marginTop: 5,
-    },
-    statsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        marginTop: theme.spacing.xs,
-    },
-    statButton: {
-        backgroundColor: theme.colorBackground,
-        borderRadius: theme.borderRadius.md,
-        borderWidth: 1,
-        borderColor: theme.colorBorder,
-        paddingHorizontal: theme.spacing.md,
-        paddingVertical: theme.spacing.sm,
-        marginRight: theme.spacing.sm,
-        marginBottom: theme.spacing.sm,
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    positiveStatButton: {
-        backgroundColor: theme.colorPrimary,
-        borderColor: theme.colorPrimary,
-    },
-    negativeStatButton: {
-        backgroundColor: theme.colorDanger,
-        borderColor: theme.colorDanger,
-    },
-    statButtonText: {
-        fontSize: 14,
-        color: theme.colorText,
-    },
-    positiveStatButtonText: {
-        color: 'white',
-    },
-    negativeStatButtonText: {
-        color: 'white',
-    },
-    checkIcon: {
-        marginLeft: theme.spacing.xs,
     },
 });

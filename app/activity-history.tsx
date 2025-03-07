@@ -3,6 +3,7 @@ import { theme } from "../theme";
 import { useCharacter } from "./context/CharacterContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useState, useMemo, useEffect } from "react";
+import { useRouter } from "expo-router";
 
 // Define the types for your data structures
 interface Activity {
@@ -10,7 +11,7 @@ interface Activity {
     date: string;
     activity: string;
     category: string;
-    stat: string;
+    stat: string | string[];
     points: number;
 }
 
@@ -39,6 +40,8 @@ export default function ActivityHistoryScreen(): JSX.Element {
     });
     const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
     const [categoryMap, setCategoryMap] = useState<Record<string, { name: string, gradient: [string, string], icon: string }>>({});
+
+    const router = useRouter();
 
     // Create a map of category IDs to their display information
     useEffect(() => {
@@ -97,7 +100,15 @@ export default function ActivityHistoryScreen(): JSX.Element {
         }
         if (filters.stat !== "all") {
             filteredActivities = filteredActivities.filter(
-                (activity: Activity) => activity.stat === filters.stat
+                (activity: Activity) => {
+                    if (Array.isArray(activity.stat)) {
+                        // Include activity if any of its stats match the filter
+                        return activity.stat.includes(filters.stat);
+                    } else {
+                        // For backward compatibility
+                        return activity.stat === filters.stat;
+                    }
+                }
             );
         }
         // Apply search query
@@ -105,13 +116,18 @@ export default function ActivityHistoryScreen(): JSX.Element {
             const searchTerms = filters.searchQuery.toLowerCase().trim().split(/\s+/);
             filteredActivities = filteredActivities.filter((activity: Activity) => {
                 const activityText = activity.activity.toLowerCase();
-                const statText = activity.stat.toLowerCase();
-                const categoryId = activity.category;
+                let statText = "";
 
-                // Get category name if available
+                if (Array.isArray(activity.stat)) {
+                    // Join multiple stats for searching
+                    statText = activity.stat.join(" ").toLowerCase();
+                } else {
+                    statText = activity.stat.toLowerCase();
+                }
+
+                const categoryId = activity.category;
                 const categoryName = categoryMap[categoryId]?.name?.toLowerCase() || '';
 
-                // Check if any search term is found in activity description, stat name, or category
                 return searchTerms.some(term =>
                     activityText.includes(term) ||
                     statText.includes(term) ||
@@ -212,7 +228,15 @@ export default function ActivityHistoryScreen(): JSX.Element {
     const allStats = useMemo((): string[] => {
         const stats = new Set<string>();
         activityLog.forEach((activity: Activity) => {
-            stats.add(activity.stat);
+            if (Array.isArray(activity.stat)) {
+                // If stat is an array, add each stat individually
+                activity.stat.forEach(statName => {
+                    stats.add(statName);
+                });
+            } else {
+                // For backward compatibility with older single-stat logs
+                stats.add(activity.stat);
+            }
         });
         return Array.from(stats);
     }, [activityLog]);
@@ -485,6 +509,14 @@ export default function ActivityHistoryScreen(): JSX.Element {
                                                     {getCategoryName(activity.category)}
                                                 </Text>
                                             </View>
+
+                                            {/* Add Edit Button */}
+                                            <TouchableOpacity
+                                                onPress={() => router.push(`/edit-activity?id=${activity.id}`)}
+                                                style={styles.editButton}
+                                            >
+                                                <MaterialCommunityIcons name="pencil" size={18} color={theme.colorTextSecondary} />
+                                            </TouchableOpacity>
                                         </View>
 
                                         <Text style={styles.activityText}>
@@ -495,12 +527,28 @@ export default function ActivityHistoryScreen(): JSX.Element {
                                         </Text>
 
                                         <View style={styles.statsRow}>
-                                            <View style={styles.statBadge}>
-                                                <Text style={styles.statName}>{activity.stat}</Text>
-                                                <Text style={styles.statPoints}>
-                                                    {activity.points > 0 ? '+' : ''}{activity.points}
-                                                </Text>
-                                            </View>
+                                            {Array.isArray(activity.stat) ? (
+                                                // Display multiple stats
+                                                activity.stat.map((statName, index) => (
+                                                    <View
+                                                        key={`${activity.id}-${statName}-${index}`}
+                                                        style={[styles.statBadge, index > 0 && styles.statBadgeMargin]}
+                                                    >
+                                                        <Text style={styles.statName}>{statName}</Text>
+                                                        <Text style={styles.statPoints}>
+                                                            {activity.points > 0 ? '+' : ''}{activity.points}
+                                                        </Text>
+                                                    </View>
+                                                ))
+                                            ) : (
+                                                // Display single stat (for backward compatibility)
+                                                <View style={styles.statBadge}>
+                                                    <Text style={styles.statName}>{activity.stat}</Text>
+                                                    <Text style={styles.statPoints}>
+                                                        {activity.points > 0 ? '+' : ''}{activity.points}
+                                                    </Text>
+                                                </View>
+                                            )}
                                         </View>
                                     </View>
                                 ))}
@@ -522,6 +570,12 @@ const styles = StyleSheet.create({
     },
     header: {
         marginBottom: theme.spacing.md,
+    },
+    statBadgeMargin: {
+        marginLeft: theme.spacing.sm,
+    },
+    editButton: {
+        padding: 8,
     },
     // Search styles
     searchContainer: {

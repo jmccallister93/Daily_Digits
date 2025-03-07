@@ -73,6 +73,14 @@ export default function Layout() {
                     }}
                 />
                 <Tabs.Screen
+                    name="edit-activity"
+                    options={{
+                        href: null,
+                        // tabBarButton: () => null,
+                        headerShown: false
+                    }}
+                />
+                <Tabs.Screen
                     name="components/SplashScreen"
                     options={{
                         href: null,
