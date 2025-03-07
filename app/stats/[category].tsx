@@ -94,11 +94,29 @@ export default function DynamicStatsScreen() {
                     </TouchableOpacity>
 
                     <View style={styles.headerContent}>
-                        <View style={styles.headerTitle}>
-                            <Text style={styles.emoji}>{category.icon}</Text>
-                            <Text style={styles.title}>{category.name}</Text>
+                        <View style={styles.leftContent}>
+                            <View style={styles.headerTitle}>
+                                <Text style={styles.emoji}>{category.icon}</Text>
+                                <Text style={styles.title}>{category.name}</Text>
+                                <TouchableOpacity
+                                    style={styles.headerEditButton}
+                                    onPress={() => router.push({
+                                        pathname: '/category-manager',
+                                        params: { categoryId: categoryId }
+                                    })}
+                                >
+                                    <MaterialCommunityIcons name="pencil" size={18} color="white" />
+                                </TouchableOpacity>
+                            </View>
+                            <Text
+                                style={styles.subtitle}
+                                numberOfLines={1}
+                                ellipsizeMode="tail"
+                            >
+                                {category.description}
+                            </Text>
                         </View>
-                        <Text style={styles.subtitle}>{category.description}</Text>
+
 
                         <View style={styles.scoreContainer}>
                             <Text style={styles.scoreLabel}>Total Score</Text>
@@ -141,16 +159,7 @@ export default function DynamicStatsScreen() {
                             <Text style={styles.addButtonText}>Log Activity</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                            style={styles.editCategoryButton}
-                            onPress={() => router.push({
-                                pathname: '/category-manager',
-                                params: { categoryId: categoryId }
-                            })}
-                        >
-                            <MaterialCommunityIcons name="pencil" size={20} color={theme.colorPrimaryDark} />
-                            <Text style={styles.editCategoryButtonText}>Edit Category</Text>
-                        </TouchableOpacity>
+
                     </View>
                 </View>
             </View>
@@ -172,29 +181,37 @@ const styles = StyleSheet.create({
         color: theme.colorTextSecondary,
     },
     headerGradient: {
-        paddingTop: 50, // For status bar
+        paddingTop: 30, // For status bar
         paddingBottom: 30,
         paddingHorizontal: theme.spacing.lg,
         borderBottomLeftRadius: 24,
         borderBottomRightRadius: 24,
         ...theme.shadow.md,
     },
-    backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: theme.spacing.md,
-    },
     headerContent: {
-        marginBottom: theme.spacing.md,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: theme.spacing.sm,
+    },
+    leftContent: {
+        flex: 1,
+        marginRight: theme.spacing.lg,
     },
     headerTitle: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 4,
+    },
+    headerEditButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        // marginRight: theme.spacing.md,
+        marginLeft: theme.spacing.sm,
     },
     emoji: {
         fontSize: 24,
@@ -208,14 +225,14 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: 16,
         color: 'rgba(255, 255, 255, 0.8)',
-        marginBottom: theme.spacing.md,
+        width: '100%',
     },
     scoreContainer: {
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
         borderRadius: theme.borderRadius.md,
         padding: theme.spacing.md,
         alignItems: 'center',
-        marginTop: theme.spacing.sm,
+        minWidth: 100,
     },
     scoreLabel: {
         fontSize: 14,
@@ -227,6 +244,16 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: 'white',
     },
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: theme.spacing.md,
+    },
+
     statsContainer: {
         flex: 1,
         padding: theme.spacing.lg,
@@ -289,6 +316,8 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colorPrimary,
     },
     buttonContainer: {
+        // flexDirection: "row",
+        // justifyContent: "space-between",
         marginTop: theme.spacing.md,
     },
     addButton: {
@@ -311,6 +340,7 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colorPrimaryLight,
         borderRadius: theme.borderRadius.md,
         padding: theme.spacing.md,
+        marginBottom: theme.spacing.md,
         ...theme.shadow.sm,
     },
     editCategoryButtonText: {

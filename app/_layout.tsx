@@ -61,31 +61,7 @@ export default function Layout() {
                         ),
                     }}
                 />
-                {/* Stats screens - Individual routes */}
-                <Tabs.Screen
-                    name="stats/physical-stats"
-                    options={{
-                        href: null,
-                        // tabBarButton: () => null,
-                        headerShown: false
-                    }}
-                />
-                <Tabs.Screen
-                    name="mind-stats"
-                    options={{
-                        href: null,
-                        // tabBarButton: () => null,
-                        headerShown: false
-                    }}
-                />
-                <Tabs.Screen
-                    name="social-stats"
-                    options={{
-                        href: null,
-                        // tabBarButton: () => null,
-                        headerShown: false
-                    }}
-                />
+
 
                 {/* Activity log screen */}
                 <Tabs.Screen
