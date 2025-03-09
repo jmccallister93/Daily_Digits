@@ -44,9 +44,20 @@ const StatCard: React.FC<StatCardProps> = ({ stat, categoryId, onPress, decaySet
             const now = new Date();
             const lastUpdate = new Date(decaySetting.lastUpdate);
 
-            // Add decay days to last update to get next decay time
+            // Add the appropriate time based on the timeUnit
             const nextDecay = new Date(lastUpdate);
-            nextDecay.setDate(nextDecay.getDate() + decaySetting.days);
+            switch (decaySetting.timeUnit) {
+                case 'minutes':
+                    nextDecay.setMinutes(nextDecay.getMinutes() + decaySetting.timeValue);
+                    break;
+                case 'hours':
+                    nextDecay.setHours(nextDecay.getHours() + decaySetting.timeValue);
+                    break;
+                case 'days':
+                default:
+                    nextDecay.setDate(nextDecay.getDate() + decaySetting.timeValue);
+                    break;
+            }
 
             // Calculate time difference
             const timeDiff = nextDecay.getTime() - now.getTime();

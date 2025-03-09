@@ -33,16 +33,19 @@ const DecaySettingsComponent: React.FC<DecaySettingsProps> = ({
         updateDecaySetting,
         removeDecaySetting,
         getSettingKey,
-        getDecaySettingForStat
+        getDecaySettingForStat,
+        getTimeUntilNextDecay
     } = useDecayTimer();
 
     // Local state for form
     const [decayEnabled, setDecayEnabled] = useState(false);
     const [decayPoints, setDecayPoints] = useState('1');
-    const [decayDays, setDecayDays] = useState('3');
+    const [decayTimeValue, setDecayTimeValue] = useState('3');
     const [hasExistingSetting, setHasExistingSetting] = useState(false);
+    const [timeUntilDecay, setTimeUntilDecay] = useState<{ days: number, hours: number, minutes: number } | null>(null);
+    const [timeUnit, setTimeUnit] = useState<'minutes' | 'hours' | 'days'>('days');
 
-    // Load existing setting if available
+    // Load existing setting if available and update time until decay
     useEffect(() => {
         if (isVisible) {
             const existingSetting = getDecaySettingForStat(categoryId, statName);
@@ -50,32 +53,58 @@ const DecaySettingsComponent: React.FC<DecaySettingsProps> = ({
             if (existingSetting) {
                 setDecayEnabled(existingSetting.enabled);
                 setDecayPoints(existingSetting.points.toString());
-                setDecayDays(existingSetting.days.toString());
+                setDecayTimeValue(existingSetting.timeValue.toString());
+                setTimeUnit(existingSetting.timeUnit);
                 setHasExistingSetting(true);
+
+                // Get time until next decay
+                if (existingSetting.enabled) {
+                    const timeLeft = getTimeUntilNextDecay(categoryId, statName);
+                    setTimeUntilDecay(timeLeft);
+                } else {
+                    setTimeUntilDecay(null);
+                }
             } else {
                 // Reset to defaults if no existing setting
                 setDecayEnabled(false);
                 setDecayPoints('1');
-                setDecayDays('3');
+                setDecayTimeValue('3');
                 setHasExistingSetting(false);
+                setTimeUntilDecay(null);
             }
         }
     }, [isVisible, categoryId, statName]);
 
+    // Update time until decay timer every minute
+    useEffect(() => {
+        if (!isVisible || !decayEnabled) return;
 
+        const updateTimer = () => {
+            const timeLeft = getTimeUntilNextDecay(categoryId, statName);
+            setTimeUntilDecay(timeLeft);
+        };
+
+        // Initial update
+        updateTimer();
+
+        // Set interval for updates
+        const interval = setInterval(updateTimer, 60000); // Update every minute
+
+        return () => clearInterval(interval);
+    }, [isVisible, decayEnabled, categoryId, statName]);
 
     const handleSave = () => {
         // Validate inputs
         const points = parseInt(decayPoints, 10);
-        const days = parseInt(decayDays, 10);
+        const timeValue = parseInt(decayTimeValue, 10);
 
         if (isNaN(points) || points <= 0) {
             Alert.alert('Invalid Input', 'Points must be a positive number');
             return;
         }
 
-        if (isNaN(days) || days <= 0) {
-            Alert.alert('Invalid Input', 'Days must be a positive number');
+        if (isNaN(timeValue) || timeValue <= 0) {
+            Alert.alert('Invalid Input', `Time value must be a positive number`);
             return;
         }
 
@@ -85,7 +114,8 @@ const DecaySettingsComponent: React.FC<DecaySettingsProps> = ({
             // Update existing setting
             updateDecaySetting(settingKey, {
                 points,
-                days,
+                timeValue,
+                timeUnit,
                 enabled: decayEnabled
             });
         } else {
@@ -94,14 +124,14 @@ const DecaySettingsComponent: React.FC<DecaySettingsProps> = ({
                 categoryId,
                 statName,
                 points,
-                days,
+                timeValue,
+                timeUnit,
                 enabled: decayEnabled
             });
         }
 
         onClose();
     };
-
     const handleDelete = () => {
         Alert.alert(
             'Remove Decay Timer',
@@ -119,6 +149,33 @@ const DecaySettingsComponent: React.FC<DecaySettingsProps> = ({
                 }
             ]
         );
+    };
+
+    // Function to determine the status color based on time remaining
+    const getStatusColor = () => {
+        if (!timeUntilDecay) return theme.colorTextSecondary;
+
+        if (timeUntilDecay.days === 0 && timeUntilDecay.hours < 3) {
+            return theme.colorDanger; // Red for imminent decay
+        } else if (timeUntilDecay.days === 0 && timeUntilDecay.hours < 12) {
+            return theme.colorWarning; // Yellow for approaching decay
+        } else {
+            return theme.colorSuccess; // Green for safe
+        }
+    };
+
+    // Format the time remaining
+    const formatTimeRemaining = () => {
+        if (!timeUntilDecay) return "";
+
+        let timeString = "";
+        if (timeUntilDecay.days > 0) {
+            timeString += `${timeUntilDecay.days} day${timeUntilDecay.days !== 1 ? 's' : ''}, `;
+        }
+        timeString += `${timeUntilDecay.hours} hr${timeUntilDecay.hours !== 1 ? 's' : ''}, `;
+        timeString += `${timeUntilDecay.minutes} min${timeUntilDecay.minutes !== 1 ? 's' : ''}`;
+
+        return timeString;
     };
 
     return (
@@ -167,22 +224,62 @@ const DecaySettingsComponent: React.FC<DecaySettingsProps> = ({
                         </View>
 
                         <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Frequency (in days)</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={decayDays}
-                                onChangeText={setDecayDays}
-                                keyboardType="number-pad"
-                                placeholder="3"
-                                placeholderTextColor={theme.colorTextLight}
-                            />
+                            <Text style={styles.label}>Frequency</Text>
+                            <View style={styles.timeInputRow}>
+                                <TextInput
+                                    style={[styles.input, styles.timeValueInput]}
+                                    value={decayTimeValue}
+                                    onChangeText={setDecayTimeValue}
+                                    keyboardType="number-pad"
+                                    placeholder="3"
+                                    placeholderTextColor={theme.colorTextLight}
+                                />
+
+                                <View style={styles.timeUnitSelector}>
+                                    <TouchableOpacity
+                                        style={[styles.unitButton, timeUnit === 'minutes' && styles.activeUnitButton]}
+                                        onPress={() => setTimeUnit('minutes')}
+                                    >
+                                        <Text style={styles.unitButtonText}>Min</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.unitButton, timeUnit === 'hours' && styles.activeUnitButton]}
+                                        onPress={() => setTimeUnit('hours')}
+                                    >
+                                        <Text style={styles.unitButtonText}>Hrs</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.unitButton, timeUnit === 'days' && styles.activeUnitButton]}
+                                        onPress={() => setTimeUnit('days')}
+                                    >
+                                        <Text style={styles.unitButtonText}>Days</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
                         </View>
+
 
                         <Text style={styles.helpText}>
                             This skill will decrease by {decayPoints} point{parseInt(decayPoints) !== 1 ? 's' : ''}
-                            every {decayDays} day{parseInt(decayDays) !== 1 ? 's' : ''}
+                            every {decayTimeValue} day{parseInt(decayTimeValue) !== 1 ? 's' : ''}
                             if no activities are logged. Logging an activity resets the timer.
                         </Text>
+
+                        {/* Time until next decay section */}
+                        {decayEnabled && hasExistingSetting && timeUntilDecay && (
+                            <View style={styles.timerContainer}>
+                                <View style={styles.timerHeader}>
+                                    <Ionicons name="time-outline" size={20} color={getStatusColor()} />
+                                    <Text style={[styles.timerTitle, { color: getStatusColor() }]}>
+                                        Time until next decay
+                                    </Text>
+                                </View>
+                                <Text style={styles.timerValue}>{formatTimeRemaining()}</Text>
+                                <Text style={styles.timerNote}>
+                                    Logging an activity for this skill will reset this timer.
+                                </Text>
+                            </View>
+                        )}
 
                         {hasExistingSetting && (
                             <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
@@ -288,6 +385,35 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colorPrimaryLight,
         borderRadius: theme.borderRadius.md,
     },
+    timerContainer: {
+        marginBottom: theme.spacing.lg,
+        padding: theme.spacing.md,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        borderRadius: theme.borderRadius.md,
+        borderWidth: 1,
+        borderColor: theme.colorBorder,
+    },
+    timerHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: theme.spacing.sm,
+    },
+    timerTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        marginLeft: theme.spacing.xs,
+    },
+    timerValue: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: theme.colorText,
+        marginBottom: theme.spacing.sm,
+    },
+    timerNote: {
+        fontSize: 12,
+        color: theme.colorTextSecondary,
+        fontStyle: 'italic',
+    },
     footer: {
         flexDirection: 'row',
         justifyContent: 'flex-end',
@@ -334,6 +460,34 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '500',
         marginLeft: theme.spacing.xs,
+    },
+    timeInputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    timeValueInput: {
+        flex: 1,
+        marginRight: theme.spacing.sm,
+    },
+    timeUnitSelector: {
+        flexDirection: 'row',
+        borderWidth: 1,
+        borderColor: theme.colorBorder,
+        borderRadius: theme.borderRadius.md,
+        overflow: 'hidden',
+    },
+    unitButton: {
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        backgroundColor: theme.colorCard,
+    },
+    activeUnitButton: {
+        backgroundColor: theme.colorPrimary,
+    },
+    unitButtonText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: theme.colorText,
     },
 });
 

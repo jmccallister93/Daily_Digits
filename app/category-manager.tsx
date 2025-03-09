@@ -114,6 +114,9 @@ export default function CategoryManager() {
     const [decayPoints, setDecayPoints] = useState('1');
     const [decayDays, setDecayDays] = useState('3');
 
+    const [decayTimeValue, setDecayTimeValue] = useState('3');
+    const [timeUnit, setTimeUnit] = useState<'minutes' | 'hours' | 'days'>('days');
+
     // If a category ID is provided in the URL, open that category for editing when component mounts
     useEffect(() => {
         if (initialCategoryId && characterSheet.categories[initialCategoryId]) {
@@ -140,7 +143,8 @@ export default function CategoryManager() {
         setAttributeValue('0');
         setDecayEnabled(false);
         setDecayPoints('1');
-        setDecayDays('3');
+        setDecayTimeValue('3');
+        setTimeUnit('days');
         setEditingAttributeIndex(null);
     };
 
@@ -185,11 +189,15 @@ export default function CategoryManager() {
             if (existingSetting) {
                 setDecayEnabled(existingSetting.enabled);
                 setDecayPoints(existingSetting.points.toString());
-                setDecayDays(existingSetting.days.toString());
+
+                // Update these lines for the new fields
+                setDecayTimeValue(existingSetting.timeValue.toString());
+                setTimeUnit(existingSetting.timeUnit || 'days'); // Default to days if not present
             } else {
                 setDecayEnabled(false);
                 setDecayPoints('1');
-                setDecayDays('3');
+                setDecayTimeValue('3');
+                setTimeUnit('days'); // Default to days for new settings
             }
         }
 
@@ -226,13 +234,14 @@ export default function CategoryManager() {
         // Save decay settings
         if (editingCategory && decayEnabled) {
             const points = parseInt(decayPoints, 10) || 1;
-            const days = parseInt(decayDays, 10) || 3;
+            const timeValue = parseInt(decayTimeValue, 10) || 3;
 
             addDecaySetting({
                 categoryId: editingCategory,
                 statName: attributeName,
                 points: points,
-                days: days,
+                timeValue: timeValue,
+                timeUnit: timeUnit, // Use the selected time unit
                 enabled: true
             });
         } else if (editingCategory) {
