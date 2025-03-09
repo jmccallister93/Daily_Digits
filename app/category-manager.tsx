@@ -708,11 +708,11 @@ export default function CategoryManager() {
                                             </View>
 
                                             <View style={styles.decayInputContainer}>
-                                                <Text style={styles.decayInputLabel}>Every (days)</Text>
+                                                <Text style={styles.decayInputLabel}>Time Value</Text>
                                                 <TextInput
                                                     style={styles.decayInput}
-                                                    value={decayDays}
-                                                    onChangeText={setDecayDays}
+                                                    value={decayTimeValue}
+                                                    onChangeText={setDecayTimeValue}
                                                     keyboardType="number-pad"
                                                     placeholder="3"
                                                     placeholderTextColor={theme.colorTextLight}
@@ -720,8 +720,33 @@ export default function CategoryManager() {
                                             </View>
                                         </View>
 
+                                        {/* Add time unit selector */}
+                                        <View style={styles.timeUnitSelector}>
+                                            <Text style={styles.decayInputLabel}>Time Unit</Text>
+                                            <View style={styles.unitButtons}>
+                                                <TouchableOpacity
+                                                    style={[styles.unitButton, timeUnit === 'minutes' && styles.activeUnitButton]}
+                                                    onPress={() => setTimeUnit('minutes')}
+                                                >
+                                                    <Text style={[styles.unitButtonText, timeUnit === 'minutes' && styles.activeUnitText]}>Minutes</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={[styles.unitButton, timeUnit === 'hours' && styles.activeUnitButton]}
+                                                    onPress={() => setTimeUnit('hours')}
+                                                >
+                                                    <Text style={[styles.unitButtonText, timeUnit === 'hours' && styles.activeUnitText]}>Hours</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={[styles.unitButton, timeUnit === 'days' && styles.activeUnitButton]}
+                                                    onPress={() => setTimeUnit('days')}
+                                                >
+                                                    <Text style={[styles.unitButtonText, timeUnit === 'days' && styles.activeUnitText]}>Days</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+
                                         <Text style={styles.decayPreview}>
-                                            {attributeName || 'This attribute'} will decrease by {decayPoints} point{parseInt(decayPoints, 10) !== 1 ? 's' : ''} every {decayDays} day{parseInt(decayDays, 10) !== 1 ? 's' : ''} if no activities are logged.
+                                            {attributeName || 'This attribute'} will decrease by {decayPoints} point{parseInt(decayPoints, 10) !== 1 ? 's' : ''} every {decayTimeValue} {timeUnit}{parseInt(decayTimeValue, 10) !== 1 ? 's' : ''} if no activities are logged.
                                         </Text>
                                     </>
                                 )}
@@ -1072,7 +1097,8 @@ const styles = StyleSheet.create({
         marginLeft: theme.spacing.sm,
     },
     attributeModalContent: {
-        maxHeight: '80%', // Increase height for decay settings
+        maxHeight: '90%', // Increase height for decay settings
+        // marginBottom: 16
     },
     attributeModalForm: {
         padding: theme.spacing.lg,
@@ -1084,6 +1110,7 @@ const styles = StyleSheet.create({
         borderRadius: theme.borderRadius.md,
         borderWidth: 1,
         borderColor: 'rgba(245, 158, 11, 0.3)',
+        marginBottom: 16
     },
     decayDescription: {
         fontSize: 14,
@@ -1221,5 +1248,32 @@ const styles = StyleSheet.create({
         color: theme.colorWarning,
         marginLeft: theme.spacing.sm,
         flex: 1,
-    }
+    },
+    unitButtons: {
+        flexDirection: 'row',
+        marginTop: 6,
+        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+        borderRadius: theme.borderRadius.md,
+        overflow: 'hidden',
+    },
+    unitButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        flex: 1,
+        alignItems: 'center',
+    },
+    activeUnitButton: {
+        backgroundColor: theme.colorPrimary,
+    },
+    unitButtonText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: theme.colorText,
+    },
+    activeUnitText: {
+        color: 'white',
+    },
+    timeUnitSelector: {
+        marginBottom: theme.spacing.md,
+    },
 });

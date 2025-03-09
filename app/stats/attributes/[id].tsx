@@ -76,6 +76,7 @@ export default function AttributeDetailScreen() {
     }, [categoryId, statName, characterSheet, activityLog]);
 
     // Update countdown timer
+    // Update countdown timer
     useEffect(() => {
         if (!decaySetting || !decaySetting.enabled) {
             setTimeUntilDecay('');
@@ -86,9 +87,20 @@ export default function AttributeDetailScreen() {
             const now = new Date();
             const lastUpdate = new Date(decaySetting.lastUpdate);
 
-            // Add decay days to last update to get next decay time
+            // Calculate next decay time based on timeUnit and timeValue
             const nextDecay = new Date(lastUpdate);
-            nextDecay.setDate(nextDecay.getDate() + decaySetting.days);
+            switch (decaySetting.timeUnit) {
+                case 'minutes':
+                    nextDecay.setMinutes(nextDecay.getMinutes() + decaySetting.timeValue);
+                    break;
+                case 'hours':
+                    nextDecay.setHours(nextDecay.getHours() + decaySetting.timeValue);
+                    break;
+                case 'days':
+                default:
+                    nextDecay.setDate(nextDecay.getDate() + decaySetting.timeValue);
+                    break;
+            }
 
             // Calculate time difference
             const timeDiff = nextDecay.getTime() - now.getTime();
@@ -121,7 +133,6 @@ export default function AttributeDetailScreen() {
 
         return () => clearInterval(interval);
     }, [decaySetting]);
-
     const handleBackPress = () => {
         router.back();
     };
@@ -189,14 +200,14 @@ export default function AttributeDetailScreen() {
                         <View style={styles.decayBanner}>
                             <MaterialIcons name="timer" size={18} color="white" />
                             <Text style={styles.decayBannerText}>
-                                Decays by {decaySetting.points} point{decaySetting.points !== 1 ? 's' : ''} • {timeUntilDecay}
+                                Decays by {decaySetting.points} point{decaySetting.points !== 1 ? 's' : ''} every {decaySetting.timeValue} {decaySetting.timeUnit}{decaySetting.timeValue !== 1 ? 's' : ''} • {timeUntilDecay}
                             </Text>
                         </View>
                     )}
                 </LinearGradient>
 
                 <View style={styles.content}>
-                    <View style={styles.progressSection}>
+                    {/* <View style={styles.progressSection}>
                         <View style={styles.progressLabelRow}>
                             <Text style={styles.progressLabel}>Progress</Text>
                             <Text style={styles.progressValue}>{stat.value} points</Text>
@@ -209,7 +220,7 @@ export default function AttributeDetailScreen() {
                                 ]}
                             />
                         </View>
-                    </View>
+                    </View> */}
 
                     <View style={styles.activitySection}>
                         <View style={styles.sectionHeader}>
