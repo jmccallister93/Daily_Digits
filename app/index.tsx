@@ -16,7 +16,7 @@ export default function App() {
   };
 
   const navigateToCategoryManager = () => {
-    router.push("/category-manager");
+    router.push("/stat-manager");
   };
 
   // Get all categories from the context

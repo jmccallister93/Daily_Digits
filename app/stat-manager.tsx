@@ -1,4 +1,4 @@
-// app/category-manager.tsx
+// app/stat-manager.tsx
 import React, { useState, useEffect } from 'react';
 import {
     View,
@@ -176,6 +176,7 @@ export default function CategoryManager() {
     };
 
     // Open modal to edit an existing category
+    // In handleEditCategory, after loading the category data
     const handleEditCategory = (categoryId: string) => {
         console.log("Edit category called for:", categoryId);
         const category = characterSheet.categories[categoryId];
@@ -191,8 +192,30 @@ export default function CategoryManager() {
         setInitialScore(category.score.toString());
         setCategoryStats([...category.stats]); // Copy stats array
         setEditingCategory(categoryId);
-        setModalVisible(true);
 
+        // Clear and repopulate the decay enabled attributes state
+        const updatedDecayAttributes: {
+            [attributeName: string]: {
+                points: number;
+                timeValue: number;
+                timeUnit: 'minutes' | 'hours' | 'days';
+            }
+        } = {};
+
+        // Check each stat for existing decay settings
+        category.stats.forEach(stat => {
+            const existingSetting = getDecaySettingForStat(categoryId, stat.name);
+            if (existingSetting && existingSetting.enabled) {
+                updatedDecayAttributes[stat.name] = {
+                    points: existingSetting.points,
+                    timeValue: existingSetting.timeValue,
+                    timeUnit: existingSetting.timeUnit
+                };
+            }
+        });
+
+        setDecayEnabledAttributes(updatedDecayAttributes);
+        setModalVisible(true);
     };
 
     // Open modal to add a new attribute
@@ -290,23 +313,28 @@ export default function CategoryManager() {
             setCategoryStats(updatedStats);
 
             // For existing categories, handle decay setting directly
+            // For existing categories, queue the decay setting to be added after saving
             if (editingCategory && decayEnabled) {
-                try {
-                    addDecaySetting({
-                        categoryId: editingCategory,
-                        statName: attributeName,
+                // Store that this attribute should have decay enabled in state
+                setDecayEnabledAttributes(prev => ({
+                    ...prev,
+                    [attributeName]: {
                         points: parseInt(decayPoints, 10) || 1,
                         timeValue: parseInt(decayTimeValue, 10) || 3,
-                        timeUnit: timeUnit,
-                        enabled: true
-                    });
-                } catch (error) {
-                    console.error("Error adding decay setting:", error);
-                }
+                        timeUnit: timeUnit
+                    }
+                }));
             } else if (editingCategory) {
-                // Decay disabled, remove any existing setting
+                // Remove any existing setting
                 const key = `${editingCategory}-${attributeName}`;
                 removeDecaySetting(key);
+
+                // Also remove from our tracking state
+                setDecayEnabledAttributes(prev => {
+                    const updated = { ...prev };
+                    delete updated[attributeName];
+                    return updated;
+                });
             }
         } else {
             // Add new attribute to the list
@@ -356,7 +384,7 @@ export default function CategoryManager() {
     };
 
     // Save a category (new or existing)
-    // In category-manager.tsx, modify the handleSaveCategory function:
+    // In stat-manager.tsx, modify the handleSaveCategory function:
 
     const handleSaveCategory = () => {
         if (!categoryName.trim()) {
@@ -377,6 +405,21 @@ export default function CategoryManager() {
                 score: scoreNum,
                 stats: categoryStats
             });
+
+            // Apply decay settings after category update
+            // This is the key change - we need to handle both new AND edited attributes
+            Object.entries(decayEnabledAttributes).forEach(([statName, settings]) => {
+                console.log(`Applying decay setting for ${statName} in category ${editingCategory}`);
+
+                forceAddDecaySetting({
+                    categoryId: editingCategory,
+                    statName: statName,
+                    points: settings.points,
+                    timeValue: settings.timeValue,
+                    timeUnit: settings.timeUnit,
+                    enabled: true
+                });
+            });
         } else {
             // Create new category and capture the new ID
             const newId = addCategory({
@@ -394,7 +437,6 @@ export default function CategoryManager() {
             Object.entries(decayEnabledAttributes).forEach(([statName, settings]) => {
                 console.log(`Adding decay setting for ${statName} in new category ${newId}`);
 
-                // Use our new force add function that bypasses validation
                 forceAddDecaySetting({
                     categoryId: newId,
                     statName: statName,
@@ -408,14 +450,12 @@ export default function CategoryManager() {
 
         // Close the modal and reset form
         setModalVisible(false);
-
         resetForm();
         setInitialEditDone(true);
 
         // Navigate to the category page using the ID
         if (savedCategoryId) {
             setTimeout(() => {
-                // Ensure we're using consistent parameter names
                 router.navigate({
                     pathname: `/stats/${savedCategoryId}`,
                     params: { categoryId: savedCategoryId }
@@ -423,7 +463,6 @@ export default function CategoryManager() {
             }, 100);
         }
     };
-
     // Handle deleting a category
     const handleDeleteCategory = (categoryId: string) => {
         Alert.alert(

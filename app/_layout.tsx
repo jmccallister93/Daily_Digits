@@ -55,7 +55,7 @@ export default function Layout() {
                         }}
                     />
                     <Tabs.Screen
-                        name="category-manager"
+                        name="stat-manager"
                         options={{
                             title: "Stat Manager",
                             tabBarIcon: ({ color, size }) => (

@@ -221,7 +221,7 @@ export default function DynamicStatsScreen() {
                                 <TouchableOpacity
                                     style={styles.headerEditButton}
                                     onPress={() => router.push({
-                                        pathname: '/category-manager',
+                                        pathname: '/stat-manager',
                                         // params: { categoryId: categoryId }
                                     })}
                                 >

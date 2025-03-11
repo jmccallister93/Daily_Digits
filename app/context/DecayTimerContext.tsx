@@ -390,6 +390,7 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     // Add a new decay setting
     const addDecaySetting = (setting: Omit<DecaySetting, 'lastUpdate'>, retryCount = 0) => {
+        console.log("DECAY ADD", setting)
         // Validate timeValue to prevent NaN issues
         if (isNaN(setting.timeValue) || setting.timeValue <= 0) {
             console.error(`Cannot add decay setting with invalid time value: ${setting.timeValue}`);
@@ -506,6 +507,7 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     const forceAddDecaySetting = (setting: Omit<DecaySetting, 'lastUpdate'>) => {
+        console.log("FORCE DECAY", setting)
         const key = getSettingKey(setting.categoryId, setting.statName);
         const newSetting = {
             ...setting,
