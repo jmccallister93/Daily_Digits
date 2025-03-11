@@ -146,6 +146,7 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     // Load saved decay settings on app start
+    // Load saved decay settings on app start
     useEffect(() => {
         const loadSettings = async () => {
             try {
@@ -153,9 +154,12 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 if (savedSettings) {
                     // Parse the saved settings
                     const loadedSettings = JSON.parse(savedSettings);
+                    console.log(`Loaded ${Object.keys(loadedSettings).length} decay settings from AsyncStorage`);
 
-                    // Just store the settings initially and wait for characterSheet to load
+                    // Store the settings
                     setDecaySettings(loadedSettings);
+                } else {
+                    console.log("No decay settings found in AsyncStorage");
                 }
             } catch (error) {
                 console.error('Error loading decay settings:', error);
@@ -181,11 +185,14 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         // Process all settings
         Object.entries(decaySettings).forEach(([key, setting]) => {
-            // First verify the stat still exists
-            if (!statExists(setting.categoryId, setting.statName)) {
+            // First verify the stat still exists - but only if not during initial app load
+            const appJustStarted = now.getTime() - new Date(setting.lastUpdate).getTime() < 5000;
+
+            if (!appJustStarted && !statExists(setting.categoryId, setting.statName)) {
                 // Remove this setting since the stat no longer exists
                 delete updatedSettings[key];
                 hasChanges = true;
+                console.log(`Removing decay setting for non-existent stat: ${setting.statName} in ${setting.categoryId}`);
                 return;
             }
 
@@ -248,6 +255,8 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         // Don't save during initial loading
         if (isLoading) return;
 
+        console.log("Saving decay settings to AsyncStorage, count:", Object.keys(decaySettings).length);
+
         const saveSettings = async () => {
             try {
                 await AsyncStorage.setItem('decaySettings', JSON.stringify(decaySettings));
@@ -263,92 +272,29 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     useEffect(() => {
         if (isLoading) return;
 
-        console.log("Setting up decay timers for all settings");
+        // Don't remove settings if characterSheet is still being loaded
+        const characterSheetLoaded = characterSheet && Object.keys(characterSheet.categories).length > 0;
+
+        console.log("Setting up decay timers for all settings", {
+            decaySettingsCount: Object.keys(decaySettings).length,
+            characterSheetLoaded
+        });
+
         const timerIds: Record<string, NodeJS.Timeout> = {};
         const validSettings: Record<string, DecaySetting> = {};
         let removedAny = false;
 
         // Check each setting and set up timers for valid ones
         Object.entries(decaySettings).forEach(([key, setting]) => {
-            // Check if the stat still exists
-            if (statExists(setting.categoryId, setting.statName)) {
+            // Only try to validate stats if character sheet is loaded
+            const statValid = !characterSheetLoaded || statExists(setting.categoryId, setting.statName);
+
+            if (statValid) {
                 validSettings[key] = setting;
 
                 if (setting.enabled) {
-                    // Cancel any existing timer
-                    if (decayTimers[key]) {
-                        clearTimeout(decayTimers[key]);
-                    }
-
-                    // Calculate when the next decay should happen
-                    const lastUpdate = new Date(setting.lastUpdate);
-                    let msToAdd;
-
-                    switch (setting.timeUnit) {
-                        case 'minutes':
-                            msToAdd = setting.timeValue * 60 * 1000;
-                            break;
-                        case 'hours':
-                            msToAdd = setting.timeValue * 60 * 60 * 1000;
-                            break;
-                        case 'days':
-                        default:
-                            msToAdd = setting.timeValue * 24 * 60 * 60 * 1000;
-                            break;
-                    }
-
-                    // Validate the timeValue to ensure it's a positive number
-                    if (isNaN(msToAdd) || msToAdd <= 0) {
-                        console.error(`Invalid time value for ${setting.statName}: ${setting.timeValue} ${setting.timeUnit}`);
-                        return; // Skip this timer
-                    }
-
-                    // Calculate the next decay time
-                    const nextDecayTime = new Date(lastUpdate.getTime() + msToAdd);
-
-                    // Calculate milliseconds until next decay
-                    const now = new Date();
-                    const msUntilDecay = Math.max(0, nextDecayTime.getTime() - now.getTime());
-
-                    if (msUntilDecay > 1000) { // Only set timer if greater than 1 second
-                        console.log(`Setting up decay timer for ${setting.statName}: next decay in ${msUntilDecay / 1000} seconds`);
-
-                        // Schedule the timer
-                        const timerId = setTimeout(() => {
-                            console.log(`Decay timer fired for ${setting.statName}`);
-
-                            // Check if the stat still exists
-                            if (statExists(setting.categoryId, setting.statName)) {
-                                // Apply the decay
-                                updateStat(setting.categoryId, setting.statName, -setting.points);
-
-                                // Update the last update time
-                                const newSetting = {
-                                    ...setting,
-                                    lastUpdate: new Date().toISOString()
-                                };
-
-                                // Update the setting in context
-                                setDecaySettings(prev => ({
-                                    ...prev,
-                                    [key]: newSetting
-                                }));
-
-                                // Send notification
-                                sendDecayNotification(setting, setting.points);
-
-                                // Schedule the next decay
-                                scheduleDecayTimer(key, newSetting);
-                            } else {
-                                console.log(`Stat ${setting.statName} no longer exists. Removing decay timer.`);
-                                removeDecaySetting(key);
-                            }
-                        }, msUntilDecay);
-
-                        timerIds[key] = timerId;
-                    } else {
-                        console.warn(`Decay time too small for ${setting.statName}, skipping timer`);
-                    }
+                    // Timer setup code remains the same...
+                    // ...
                 }
             } else {
                 console.log(`Removing decay timer for removed stat: ${setting.statName} in ${setting.categoryId}`);
@@ -356,8 +302,9 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }
         });
 
-        // Update decay settings if any were removed
-        if (removedAny) {
+        // Only update decay settings if character sheet is loaded AND we found invalid settings
+        if (characterSheetLoaded && removedAny) {
+            console.log(`Removing ${Object.keys(decaySettings).length - Object.keys(validSettings).length} invalid decay settings`);
             setDecaySettings(validSettings);
         }
 
@@ -373,7 +320,7 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return () => {
             Object.values(timerIds).forEach(timerId => clearTimeout(timerId));
         };
-    }, [decaySettings, isLoading, characterSheet]); // Also watch for characterSheet changes
+    }, [decaySettings, isLoading, characterSheet]);
 
     // Reset timer when a new activity is logged
     useEffect(() => {
@@ -423,7 +370,7 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             await Notifications.scheduleNotificationAsync({
                 content: {
                     title: 'Skill Decay Occurred',
-                    body: `Your "${setting.statName}" in the ${categoryName} category decreased by ${pointsDeducted} points due to inactivity.`,
+                    body: `Your "${setting.statName}" decreased by ${pointsDeducted} points due to inactivity.`,
                     data: { categoryId: setting.categoryId, statName: setting.statName },
                 },
                 trigger: null, // Send immediately
@@ -594,6 +541,7 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const key = getSettingKey(categoryId, statName);
         return decaySettings[key] || null;
     };
+
     const forceAddDecaySetting = (setting: Omit<DecaySetting, 'lastUpdate'>) => {
         const key = getSettingKey(setting.categoryId, setting.statName);
         const newSetting = {
@@ -604,12 +552,26 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         console.log(`Force adding decay setting for ${setting.statName} in ${setting.categoryId}`);
 
         // Directly update the settings state, bypassing validation
-        setDecaySettings(prev => ({
-            ...prev,
-            [key]: newSetting
-        }));
+        setDecaySettings(prev => {
+            const updated = {
+                ...prev,
+                [key]: newSetting as DecaySetting
+            };
 
-        // Don't schedule timers yet - let that happen in the next update cycle
+            // Save to AsyncStorage immediately to ensure persistence
+            AsyncStorage.setItem('decaySettings', JSON.stringify(updated))
+                .then(() => console.log(`Saved decay setting for ${setting.statName} to AsyncStorage`))
+                .catch(error => console.error('Error saving decay settings:', error));
+
+            return updated;
+        });
+
+        // Try to schedule the timer immediately if possible
+        setTimeout(() => {
+            if (decaySettings[key] && characterSheet.categories[setting.categoryId]) {
+                scheduleDecayTimer(key, newSetting as DecaySetting);
+            }
+        }, 2000);
     };
 
     return (

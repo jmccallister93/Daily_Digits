@@ -187,7 +187,7 @@ export default function CategoryManager() {
     const handleAddAttribute = () => {
         resetAttributeForm();
         // Enable decay by default for user convenience
-        setDecayEnabled(true);
+        setDecayEnabled(false);
         setAttributeModalVisible(true);
     };
     // const handleDecayToggle = (value: boolean) => {
