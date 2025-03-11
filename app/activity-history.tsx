@@ -467,7 +467,7 @@ export default function ActivityHistoryScreen(): JSX.Element {
                         >
                             <View style={styles.dayHeaderLeft}>
                                 <Text style={styles.dayDate}>{formatDate(item.date)}</Text>
-                                <Text style={styles.dayTotal}>+{item.totalPoints} points</Text>
+                                <Text style={styles.dayTotal}>{item.totalPoints < 0 ? item.totalPoints : `+ ${item.totalPoints}`} points</Text>
                             </View>
 
                             <View style={styles.dayStats}>

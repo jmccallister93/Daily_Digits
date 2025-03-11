@@ -222,7 +222,7 @@ export default function DynamicStatsScreen() {
                                     style={styles.headerEditButton}
                                     onPress={() => router.push({
                                         pathname: '/category-manager',
-                                        params: { categoryId: categoryId }
+                                        // params: { categoryId: categoryId }
                                     })}
                                 >
                                     <MaterialCommunityIcons name="pencil" size={18} color="white" />

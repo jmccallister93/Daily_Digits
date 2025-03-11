@@ -2,7 +2,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCharacter } from './CharacterContext';
-import * as Notifications from 'expo-notifications';
 
 // Define the structure for decay settings
 export type DecaySetting = {
@@ -31,18 +30,10 @@ type DecayTimerContextType = {
     forceAddDecaySetting: (setting: Omit<DecaySetting, 'lastUpdate'>) => void
 };
 
-Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-    }),
-});
-
 const DecayTimerContext = createContext<DecayTimerContextType | undefined>(undefined);
 
 export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { updateStat, activityLog, characterSheet } = useCharacter();
+    const { updateStat, activityLog, characterSheet, logActivity } = useCharacter();
     const [decaySettings, setDecaySettings] = useState<Record<string, DecaySetting>>({});
     const [isLoading, setIsLoading] = useState(true);
     const [decayTimers, setDecayTimers] = useState<Record<string, NodeJS.Timeout>>({});
@@ -124,8 +115,13 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                         [settingKey]: newSetting
                     }));
 
-                    // Send notification with more user-friendly names
-                    sendDecayNotification(setting, setting.points);
+                    // Log the decay as an activity instead of showing a notification
+                    logActivity(
+                        `Skill decay due to inactivity`,
+                        setting.categoryId,
+                        [setting.statName],
+                        -setting.points
+                    );
 
                     // Schedule the next decay
                     scheduleDecayTimer(settingKey, newSetting);
@@ -145,7 +141,6 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
     };
 
-    // Load saved decay settings on app start
     // Load saved decay settings on app start
     useEffect(() => {
         const loadSettings = async () => {
@@ -239,7 +234,14 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     };
 
                     hasChanges = true;
-                    sendDecayNotification(setting, pointsToDeduct);
+
+                    // Log the decay as an activity
+                    logActivity(
+                        `Missed activity decay (${decayCycles} cycle${decayCycles > 1 ? 's' : ''})`,
+                        setting.categoryId,
+                        [setting.statName],
+                        -pointsToDeduct
+                    );
                 }
             }
         });
@@ -248,7 +250,7 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         if (hasChanges) {
             setDecaySettings(updatedSettings);
         }
-    }, [isLoading, decaySettings, characterSheet, updateStat]);
+    }, [isLoading, decaySettings, characterSheet, updateStat, logActivity]);
 
     // Save settings whenever they change
     useEffect(() => {
@@ -293,8 +295,8 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 validSettings[key] = setting;
 
                 if (setting.enabled) {
-                    // Timer setup code remains the same...
-                    // ...
+                    // Set up the timer
+                    scheduleDecayTimer(key, setting);
                 }
             } else {
                 console.log(`Removing decay timer for removed stat: ${setting.statName} in ${setting.categoryId}`);
@@ -342,44 +344,6 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
     }, [activityLog, isLoading]);
 
-    // Request notification permissions
-    useEffect(() => {
-        const requestPermissions = async () => {
-            const { status } = await Notifications.requestPermissionsAsync();
-            if (status !== 'granted') {
-                console.log('Notification permissions not granted');
-            }
-        };
-
-        requestPermissions();
-    }, []);
-
-    // Function to send decay notification with better formatting
-    const sendDecayNotification = async (setting: DecaySetting, pointsDeducted: number) => {
-        try {
-            // Get a more readable category name by removing hyphens and capitalizing words
-            const formatCategoryName = (categoryId: string) => {
-                return categoryId
-                    .split('-')
-                    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-                    .join(' ');
-            };
-
-            const categoryName = formatCategoryName(setting.categoryId);
-
-            await Notifications.scheduleNotificationAsync({
-                content: {
-                    title: 'Skill Decay Occurred',
-                    body: `Your "${setting.statName}" decreased by ${pointsDeducted} points due to inactivity.`,
-                    data: { categoryId: setting.categoryId, statName: setting.statName },
-                },
-                trigger: null, // Send immediately
-            });
-        } catch (error) {
-            console.error('Error sending notification:', error);
-        }
-    };
-
     // Calculate time until next decay
     const getTimeUntilNextDecay = (categoryId: string, statName: string): { days: number, hours: number, minutes: number } | null => {
         const key = getSettingKey(categoryId, statName);
@@ -425,7 +389,6 @@ export const DecayTimerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     // Add a new decay setting
-    // Add to the DecayTimerProvider component
     const addDecaySetting = (setting: Omit<DecaySetting, 'lastUpdate'>, retryCount = 0) => {
         // Validate timeValue to prevent NaN issues
         if (isNaN(setting.timeValue) || setting.timeValue <= 0) {

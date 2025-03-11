@@ -93,7 +93,9 @@ export default function CategoryManager() {
     // Check if a specific category ID is provided in the URL params
     const initialCategoryId = typeof params.categoryId === 'string' ? params.categoryId : null;
 
+
     const [modalVisible, setModalVisible] = useState(false);
+
     const [editingCategory, setEditingCategory] = useState<string | null>(null);
     const [attributeModalVisible, setAttributeModalVisible] = useState(false);
     const [editingAttributeIndex, setEditingAttributeIndex] = useState<number | null>(null);
@@ -117,6 +119,8 @@ export default function CategoryManager() {
     const [decayTimeValue, setDecayTimeValue] = useState('3');
     const [timeUnit, setTimeUnit] = useState<'minutes' | 'hours' | 'days'>('days');
 
+    const [initialEditDone, setInitialEditDone] = useState(false);
+
     const [decayEnabledAttributes, setDecayEnabledAttributes] = useState<{
         [attributeName: string]: {
             points: number;
@@ -129,10 +133,12 @@ export default function CategoryManager() {
 
     // If a category ID is provided in the URL, open that category for editing when component mounts
     useEffect(() => {
-        if (initialCategoryId && characterSheet.categories[initialCategoryId]) {
+        if (!initialEditDone && initialCategoryId && characterSheet.categories[initialCategoryId]) {
+            console.log("Opening edit modal for category:", initialCategoryId);
             handleEditCategory(initialCategoryId);
+            setInitialEditDone(true);
         }
-    }, [initialCategoryId, characterSheet]);
+    }, [initialCategoryId, characterSheet, initialEditDone]);
 
 
 
@@ -148,6 +154,7 @@ export default function CategoryManager() {
         setModalVisible(false);
         setAttributeModalVisible(false);
         setDecayEnabledAttributes({}); // Clear the decay settings
+
     };
 
     // Reset attribute form
@@ -165,13 +172,17 @@ export default function CategoryManager() {
     const handleAddCategory = () => {
         resetForm();
         setModalVisible(true);
+
     };
 
     // Open modal to edit an existing category
     const handleEditCategory = (categoryId: string) => {
-
+        console.log("Edit category called for:", categoryId);
         const category = characterSheet.categories[categoryId];
-        if (!category) return;
+        if (!category) {
+            console.warn("Category not found:", categoryId);
+            return;
+        }
 
         setCategoryName(category.name);
         setCategoryDescription(category.description);
@@ -181,6 +192,7 @@ export default function CategoryManager() {
         setCategoryStats([...category.stats]); // Copy stats array
         setEditingCategory(categoryId);
         setModalVisible(true);
+
     };
 
     // Open modal to add a new attribute
@@ -396,12 +408,18 @@ export default function CategoryManager() {
 
         // Close the modal and reset form
         setModalVisible(false);
+
         resetForm();
+        setInitialEditDone(true);
 
         // Navigate to the category page using the ID
         if (savedCategoryId) {
             setTimeout(() => {
-                router.replace(`/stats/${savedCategoryId}`);
+                // Ensure we're using consistent parameter names
+                router.navigate({
+                    pathname: `/stats/${savedCategoryId}`,
+                    params: { categoryId: savedCategoryId }
+                });
             }, 100);
         }
     };
@@ -421,6 +439,7 @@ export default function CategoryManager() {
                         // If we were editing this category, close the modal
                         if (editingCategory === categoryId) {
                             setModalVisible(false);
+
                             resetForm();
                         }
                     }
@@ -478,6 +497,7 @@ export default function CategoryManager() {
         const backAction = () => {
             if (modalVisible) {
                 setModalVisible(false);
+
                 return true;
             }
             if (attributeModalVisible) {
@@ -495,12 +515,7 @@ export default function CategoryManager() {
         return () => backHandler.remove();
     }, [modalVisible, attributeModalVisible]);
 
-    // useEffect(() => {
-    //     console.log("Effect triggered - initialCategoryId:", initialCategoryId);
-    //     if (initialCategoryId && characterSheet.categories[initialCategoryId]) {
-    //         handleEditCategory(initialCategoryId);
-    //     }
-    // }, [initialCategoryId, characterSheet]);
+
 
     return (
         <View style={styles.container}>
@@ -574,7 +589,7 @@ export default function CategoryManager() {
                 animationType="slide"
                 transparent={true}
                 visible={modalVisible}
-                onRequestClose={() => setModalVisible(false)}
+                onRequestClose={() => { setModalVisible(false) }}
             >
                 <View style={styles.modalContainer}>
                     <View style={styles.modalContent}>
@@ -584,7 +599,7 @@ export default function CategoryManager() {
                             </Text>
                             <TouchableOpacity
                                 style={styles.modalCloseButton}
-                                onPress={() => setModalVisible(false)}
+                                onPress={() => { setModalVisible(false) }}
                             >
                                 <MaterialCommunityIcons name="close" size={24} color={theme.colorTextSecondary} />
                             </TouchableOpacity>
@@ -734,7 +749,7 @@ export default function CategoryManager() {
                         <View style={styles.modalFooter}>
                             <TouchableOpacity
                                 style={styles.cancelButton}
-                                onPress={() => setModalVisible(false)}
+                                onPress={() => { setModalVisible(false) }}
                             >
                                 <Text style={styles.cancelButtonText}>Cancel</Text>
                             </TouchableOpacity>
