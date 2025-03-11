@@ -86,7 +86,7 @@ interface StatCategory {
 
 export default function CategoryManager() {
     const { characterSheet, updateCategory, addCategory, deleteCategory } = useCharacter();
-    const { getDecaySettingForStat, addDecaySetting, updateDecaySetting, removeDecaySetting } = useDecayTimer();
+    const { getDecaySettingForStat, addDecaySetting, updateDecaySetting, removeDecaySetting, forceAddDecaySetting } = useDecayTimer();
     const router = useRouter();
     const params = useLocalSearchParams();
 
@@ -117,12 +117,24 @@ export default function CategoryManager() {
     const [decayTimeValue, setDecayTimeValue] = useState('3');
     const [timeUnit, setTimeUnit] = useState<'minutes' | 'hours' | 'days'>('days');
 
+    const [decayEnabledAttributes, setDecayEnabledAttributes] = useState<{
+        [attributeName: string]: {
+            points: number;
+            timeValue: number;
+            timeUnit: 'minutes' | 'hours' | 'days';
+        }
+    }>({});
+
+
+
     // If a category ID is provided in the URL, open that category for editing when component mounts
     useEffect(() => {
         if (initialCategoryId && characterSheet.categories[initialCategoryId]) {
             handleEditCategory(initialCategoryId);
         }
     }, [initialCategoryId, characterSheet]);
+
+
 
     // Function to reset form state
     const resetForm = () => {
@@ -135,6 +147,7 @@ export default function CategoryManager() {
         setEditingCategory(null);
         setModalVisible(false);
         setAttributeModalVisible(false);
+        setDecayEnabledAttributes({}); // Clear the decay settings
     };
 
     // Reset attribute form
@@ -173,9 +186,46 @@ export default function CategoryManager() {
     // Open modal to add a new attribute
     const handleAddAttribute = () => {
         resetAttributeForm();
+        // Enable decay by default for user convenience
+        setDecayEnabled(true);
         setAttributeModalVisible(true);
     };
+    // const handleDecayToggle = (value: boolean) => {
+    //     setDecayEnabled(value);
 
+    //     if (value && !editingCategory) {
+    //         // When enabling decay for a new attribute in a new category, 
+    //         // store the settings in pendingDecaySettings
+    //         if (attributeName) {
+    //             const points = parseInt(decayPoints, 10) || 1;
+    //             const timeValue = parseInt(decayTimeValue, 10) || 3;
+
+    //             // Check if we already have a pending setting for this attribute
+    //             const existingIndex = pendingDecaySettings.findIndex(
+    //                 s => s.statName === attributeName
+    //             );
+
+    //             const newSetting = {
+    //                 categoryId: editingCategory || '', // Will be updated when category is saved
+    //                 statName: attributeName,
+    //                 points: points,
+    //                 timeValue: timeValue,
+    //                 timeUnit: timeUnit,
+    //                 enabled: true
+    //             };
+
+    //             if (existingIndex >= 0) {
+    //                 // Update existing setting
+    //                 const updatedSettings = [...pendingDecaySettings];
+    //                 updatedSettings[existingIndex] = newSetting;
+    //                 setPendingDecaySettings(updatedSettings);
+    //             } else {
+    //                 // Add new setting
+    //                 setPendingDecaySettings([...pendingDecaySettings, newSetting]);
+    //             }
+    //         }
+    //     }
+    // };
     // Open modal to edit an existing attribute
     const handleEditAttribute = (index: number) => {
         const attribute = categoryStats[index];
@@ -226,34 +276,53 @@ export default function CategoryManager() {
 
             updatedStats[editingAttributeIndex] = newAttribute;
             setCategoryStats(updatedStats);
+
+            // For existing categories, handle decay setting directly
+            if (editingCategory && decayEnabled) {
+                try {
+                    addDecaySetting({
+                        categoryId: editingCategory,
+                        statName: attributeName,
+                        points: parseInt(decayPoints, 10) || 1,
+                        timeValue: parseInt(decayTimeValue, 10) || 3,
+                        timeUnit: timeUnit,
+                        enabled: true
+                    });
+                } catch (error) {
+                    console.error("Error adding decay setting:", error);
+                }
+            } else if (editingCategory) {
+                // Decay disabled, remove any existing setting
+                const key = `${editingCategory}-${attributeName}`;
+                removeDecaySetting(key);
+            }
         } else {
-            // Add new attribute
+            // Add new attribute to the list
             setCategoryStats([...categoryStats, newAttribute]);
-        }
 
-        // Save decay settings
-        if (editingCategory && decayEnabled) {
-            const points = parseInt(decayPoints, 10) || 1;
-            const timeValue = parseInt(decayTimeValue, 10) || 3;
-
-            addDecaySetting({
-                categoryId: editingCategory,
-                statName: attributeName,
-                points: points,
-                timeValue: timeValue,
-                timeUnit: timeUnit, // Use the selected time unit
-                enabled: true
-            });
-        } else if (editingCategory) {
-            // If decay is disabled, remove any existing setting
-            const key = `${editingCategory}-${attributeName}`;
-            removeDecaySetting(key);
+            // Track decay settings for this attribute if enabled
+            if (decayEnabled) {
+                setDecayEnabledAttributes(prev => ({
+                    ...prev,
+                    [attributeName]: {
+                        points: parseInt(decayPoints, 10) || 1,
+                        timeValue: parseInt(decayTimeValue, 10) || 3,
+                        timeUnit: timeUnit
+                    }
+                }));
+            } else {
+                // Make sure this attribute is not in the decay enabled list
+                setDecayEnabledAttributes(prev => {
+                    const updated = { ...prev };
+                    delete updated[attributeName];
+                    return updated;
+                });
+            }
         }
 
         setAttributeModalVisible(false);
         resetAttributeForm();
     };
-
     // Delete an attribute
     const handleDeleteAttribute = (index: number) => {
         Alert.alert(
@@ -275,6 +344,8 @@ export default function CategoryManager() {
     };
 
     // Save a category (new or existing)
+    // In category-manager.tsx, modify the handleSaveCategory function:
+
     const handleSaveCategory = () => {
         if (!categoryName.trim()) {
             Alert.alert('Error', 'Please enter a category name');
@@ -296,10 +367,7 @@ export default function CategoryManager() {
             });
         } else {
             // Create new category and capture the new ID
-            // Assuming addCategory returns the new ID or we can access it somehow
-            const newId = Date.now().toString(); // Fallback if addCategory doesn't return ID
-
-            addCategory({
+            const newId = addCategory({
                 name: categoryName,
                 description: categoryDescription,
                 icon: categoryIcon,
@@ -308,8 +376,22 @@ export default function CategoryManager() {
                 stats: categoryStats
             });
 
-            // Use the new ID for navigation
             savedCategoryId = newId;
+
+            // Process decay settings for each attribute
+            Object.entries(decayEnabledAttributes).forEach(([statName, settings]) => {
+                console.log(`Adding decay setting for ${statName} in new category ${newId}`);
+
+                // Use our new force add function that bypasses validation
+                forceAddDecaySetting({
+                    categoryId: newId,
+                    statName: statName,
+                    points: settings.points,
+                    timeValue: settings.timeValue,
+                    timeUnit: settings.timeUnit,
+                    enabled: true
+                });
+            });
         }
 
         // Close the modal and reset form
@@ -319,7 +401,6 @@ export default function CategoryManager() {
         // Navigate to the category page using the ID
         if (savedCategoryId) {
             setTimeout(() => {
-                // Use replace instead of push to clear the current route's params
                 router.replace(`/stats/${savedCategoryId}`);
             }, 100);
         }
@@ -352,6 +433,45 @@ export default function CategoryManager() {
     const handleBackPress = () => {
         router.back();
     };
+
+    // Add this useEffect to monitor characterSheet changes and apply pending decay settings
+    // useEffect(() => {
+    //     if (pendingDecaySettings.length > 0) {
+    //         // Filter the pending settings to only those where the stat now exists
+    //         const validSettings = pendingDecaySettings.filter(setting => {
+    //             const category = characterSheet.categories[setting.categoryId];
+    //             if (!category) return false;
+
+    //             return category.stats.some(stat => stat.name === setting.statName);
+    //         });
+
+    //         if (validSettings.length > 0) {
+    //             console.log(`Found ${validSettings.length} valid pending decay settings to apply`);
+
+    //             // Apply the valid settings
+    //             validSettings.forEach(setting => {
+    //                 console.log(`Now applying decay setting for ${setting.statName} in category ${setting.categoryId}`);
+    //                 addDecaySetting({
+    //                     categoryId: setting.categoryId,
+    //                     statName: setting.statName,
+    //                     points: setting.points,
+    //                     timeValue: setting.timeValue,
+    //                     timeUnit: setting.timeUnit,
+    //                     enabled: setting.enabled
+    //                 });
+    //             });
+
+    //             // Remove the applied settings from pending
+    //             const remainingSettings = pendingDecaySettings.filter(
+    //                 setting => !validSettings.some(
+    //                     valid => valid.categoryId === setting.categoryId && valid.statName === setting.statName
+    //                 )
+    //             );
+
+    //             setPendingDecaySettings(remainingSettings);
+    //         }
+    //     }
+    // }, [characterSheet, pendingDecaySettings]);
 
     // Add this useEffect inside your component
     useEffect(() => {
