@@ -298,7 +298,7 @@ export default function CategoryManager() {
 
         const valueNum = parseInt(attributeValue, 10) || 0;
         const newAttribute: Stat = { name: attributeName, value: valueNum };
-
+        console.log()
         if (editingAttributeIndex !== null) {
             // Update existing attribute
             const updatedStats = [...categoryStats];
