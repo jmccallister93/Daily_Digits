@@ -32,7 +32,7 @@ type StatCardProps = {
 const StatCard: React.FC<StatCardProps> = ({ stat, categoryId, onPress, decaySetting }) => {
     const [timeUntilDecay, setTimeUntilDecay] = useState('');
     const hasDecay = decaySetting && decaySetting.enabled;
-
+    let test;
     // Update countdown timer
     useEffect(() => {
         if (!hasDecay) {
