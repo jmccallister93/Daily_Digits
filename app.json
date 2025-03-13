@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "taskly",
-    "slug": "taskly",
-    "scheme": "taskly",
+    "name": "daily_digits",
+    "slug": "daily_digits",
+    "scheme": "daily_digits",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,19 +14,32 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.topshelf13.dailydigits",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
+        "backgroundColor": "#FF3355"
+      },
+      "package": "com.topshelf13.daily_digits"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "5fe4c330-aae9-4c40-b137-dd1293e61df4"
+      }
+    }
   }
 }
