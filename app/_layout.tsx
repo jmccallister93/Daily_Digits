@@ -140,6 +140,38 @@ export default function Layout() {
                             headerShown: false
                         }}
                     />
+                    <Tabs.Screen
+                        name="context/CharcterContext"  // This is the important addition
+                        options={{
+                            href: null,
+                            // tabBarButton: () => null,
+                            headerShown: false
+                        }}
+                    />
+                    <Tabs.Screen
+                        name="context/DecayTimerContext"  // This is the important addition
+                        options={{
+                            href: null,
+                            // tabBarButton: () => null,
+                            headerShown: false
+                        }}
+                    />
+                    <Tabs.Screen
+                        name="components/DecaySettingsComponent"  // This is the important addition
+                        options={{
+                            href: null,
+                            // tabBarButton: () => null,
+                            headerShown: false
+                        }}
+                    />
+                    <Tabs.Screen
+                        name="components/SplashScreen"  // This is the important addition
+                        options={{
+                            href: null,
+                            // tabBarButton: () => null,
+                            headerShown: false
+                        }}
+                    />
 
                 </Tabs>
             </DecayTimerProvider>
