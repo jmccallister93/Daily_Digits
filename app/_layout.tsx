@@ -141,7 +141,7 @@ export default function Layout() {
                         }}
                     />
                     <Tabs.Screen
-                        name="context/CharcterContext"  // This is the important addition
+                        name="context/CharacterContext"  // This is the important addition
                         options={{
                             href: null,
                             // tabBarButton: () => null,
