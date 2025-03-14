@@ -1,5 +1,5 @@
 import { useRouter, Stack, useLocalSearchParams } from "expo-router";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, BackHandler } from "react-native";
 import { theme } from "../../theme";
 import { useState, useEffect } from "react";
 import { useCharacter } from "../context/CharacterContext";
@@ -108,9 +108,9 @@ const StatCard: React.FC<StatCardProps> = ({ stat, categoryId, onPress, decaySet
                 </View>
             </View>
 
-            <Text style={styles.statDescription}>
+            {/* <Text style={styles.statDescription}>
                 Improve this attribute through consistent practice and dedication.
-            </Text>
+            </Text> */}
 
             {/* <View style={styles.progressBar}>
                 <View
@@ -136,32 +136,50 @@ export default function DynamicStatsScreen() {
     const { getDecaySettingForStat } = useDecayTimer();
 
     // Get category ID from URL params
-    const categoryId = typeof params.category === 'string' ? params.category : 'physical';
+    // Get category ID from URL params - use the segment name
+    const categoryId = typeof params.category === 'string' ? params.category : '';
+
+
 
     // Get all category details from context
     const [category, setCategory] = useState<StatCategory | null>(null);
     const [stats, setStats] = useState<Stat[]>([]);
     const [totalScore, setTotalScore] = useState(0);
-
     useEffect(() => {
+
+
         if (!isLoading && characterSheet.categories) {
-            // Find the category that matches the ID from params
             const categoryData = characterSheet.categories[categoryId];
 
+
             if (categoryData) {
+
                 setCategory(categoryData);
                 setStats(categoryData.stats);
                 setTotalScore(categoryData.score);
             } else {
-                // If category doesn't exist, redirect to home or default category
-                console.warn(`Category ${categoryId} not found`);
+
                 router.replace("/");
             }
         }
     }, [characterSheet, categoryId, isLoading]);
 
+    useEffect(() => {
+        const handleHardwareBack = () => {
+            router.replace("/");
+            return true; // Prevents default back behavior
+        };
+
+        const backHandler = BackHandler.addEventListener(
+            'hardwareBackPress',
+            handleHardwareBack
+        );
+
+        return () => backHandler.remove();
+    }, [router]);
+
     const handleBackPress = () => {
-        router.navigate("/");
+        router.replace("/");
     };
 
     const handleAddActivity = () => {

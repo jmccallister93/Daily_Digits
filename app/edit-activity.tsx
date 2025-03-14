@@ -97,11 +97,6 @@ export default function EditActivityScreen() {
             valid = false;
         }
 
-        if (selectedStats.length === 0) {
-            newErrors.stat = "Please select at least one stat to modify";
-            valid = false;
-        }
-
         if (pointsValue < 1 || pointsValue > 5) {
             newErrors.points = "Points must be between 1 and 5";
             valid = false;
@@ -121,14 +116,17 @@ export default function EditActivityScreen() {
         // Apply negative sign if the negative toggle is on
         const finalPoints = isNegative ? -pointsValue : pointsValue;
 
-        // Create the updates object with the correct type for stat
+        // Create the updates object
         const updates: Partial<Omit<ActivityLog, 'stat'> & { stat?: string | string[] }> = {
             activity,
             points: finalPoints
         };
 
+        // Use the selectedStats array or fall back to the category name if empty
+        const statsToApply = selectedStats.length > 0 ? selectedStats : [categoryName];
+
         // Add the stat field with the correct type
-        updates.stat = selectedStats.length === 1 ? selectedStats[0] : selectedStats;
+        updates.stat = statsToApply.length === 1 ? statsToApply[0] : statsToApply;
 
         // Update the activity
         editActivity(activityId, updates);
@@ -136,7 +134,6 @@ export default function EditActivityScreen() {
         // Navigate back
         router.back();
     };
-
     const handleDelete = () => {
         if (!activityId) return;
 

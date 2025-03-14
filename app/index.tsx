@@ -1,17 +1,24 @@
 // app/index.tsx
 import { StyleSheet, View, Text, TouchableOpacity, FlatList, Image } from "react-native";
 import { theme } from "../theme";
-import { useRouter } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import { StatCategory, useCharacter } from "./context/CharacterContext";
 import { LinearGradient } from "expo-linear-gradient";
 import SplashScreen from "./components/SplashScreen";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
+
+
 export default function App() {
+
+
   const { characterSheet, isLoading } = useCharacter();
   const router = useRouter();
 
   const handleBoxPress = (categoryId: string) => {
+
+
+    // Try using the replace approach instead of push
     router.push(`/stats/${categoryId}`);
   };
 
@@ -59,7 +66,14 @@ export default function App() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Daily Digits</Text>
+        <View style={styles.titleContainer}>
+          <Image
+            source={require('../assets/icon.png')}
+            style={styles.headerIcon}
+            resizeMode="contain"
+          />
+          <Text style={styles.title}>Daily Digits</Text>
+        </View>
         <Text style={styles.subtitle}>Track your journey.</Text>
       </View>
 
@@ -113,6 +127,16 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: theme.spacing.xl,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xs,
+  },
+  headerIcon: {
+    width: 40,
+    height: 40,
+    marginRight: theme.spacing.sm,
   },
   title: {
     fontSize: 32,

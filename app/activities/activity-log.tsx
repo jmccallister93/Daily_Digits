@@ -88,11 +88,6 @@ export default function ActivityLogScreen() {
             valid = false;
         }
 
-        if (selectedStats.length === 0) {
-            newErrors.stat = "Please select at least one stat to modify";
-            valid = false;
-        }
-
         if (pointsValue < 1 || pointsValue > 5) {
             newErrors.points = "Points must be between 1 and 5";
             valid = false;
@@ -101,19 +96,19 @@ export default function ActivityLogScreen() {
         setErrors(newErrors);
         return valid;
     };
-
     const handleSave = () => {
         if (!validateForm() || !categoryId) return;
 
         // Apply negative sign if the negative toggle is on
         const finalPoints = isNegative ? -pointsValue : pointsValue;
 
-        // Pass the entire selectedStats array to logActivity
-        // instead of calling it multiple times
+        // Use the selectedStats array or fall back to the category name if empty
+        const statsToApply = selectedStats.length > 0 ? selectedStats : [categoryName];
+
         logActivity(
             activity,
             categoryId,
-            selectedStats, // This is now an array of selected stats
+            statsToApply,
             finalPoints
         );
 
@@ -135,7 +130,7 @@ export default function ActivityLogScreen() {
     return (
         <>
             <Stack.Screen options={{ headerShown: false }} />
-            <View style={styles.container}>
+            <View style={styles.container} key={categoryId}>
                 <LinearGradient
                     colors={categoryGradient}
                     start={{ x: 0, y: 0 }}

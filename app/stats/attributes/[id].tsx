@@ -33,9 +33,11 @@ export default function AttributeDetailScreen() {
     const [decaySetting, setDecaySetting] = useState<any>(null);
     const [timeUntilDecay, setTimeUntilDecay] = useState<string>('');
 
+
     // Load data on component mount
     useEffect(() => {
         if (categoryId && statName && characterSheet.categories) {
+
             const categoryData = characterSheet.categories[categoryId];
             if (categoryData) {
                 setCategory(categoryData);
@@ -200,7 +202,7 @@ export default function AttributeDetailScreen() {
                         <View style={styles.decayBanner}>
                             <MaterialIcons name="timer" size={18} color="white" />
                             <Text style={styles.decayBannerText}>
-                                Decays by {decaySetting.points} point{decaySetting.points !== 1 ? 's' : ''} every {decaySetting.timeValue} {decaySetting.timeUnit}{decaySetting.timeValue !== 1 ? 's' : ''} • {timeUntilDecay}
+                                Decays by {decaySetting.points} point{decaySetting.points !== 1 ? 's' : ''} every {decaySetting.timeValue} {decaySetting.timeUnit}{decaySetting.timeValue !== 1 ? '' : ''} • {timeUntilDecay}
                             </Text>
                         </View>
                     )}

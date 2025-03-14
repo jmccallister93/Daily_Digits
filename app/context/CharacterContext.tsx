@@ -142,45 +142,56 @@ export const CharacterProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             categoryObj.stats[statIndex].value += points;
 
             // Recalculate the category score (base 10 + sum of all stat values)
-            categoryObj.score = 10 + categoryObj.stats.reduce((sum, stat) => sum + stat.value, 0);
+            categoryObj.score = categoryObj.stats.reduce((sum, stat) => sum + stat.value, 0);
 
             return newSheet;
         });
     };
 
     // Log a new activity
-    // Log a new activity
     const logActivity = (activity: string, categoryId: string, stats: string | string[], points: number) => {
         // Create a new activity log entry
         const timestamp = new Date().toISOString();
         const activityId = Date.now().toString();
 
-        // Create the activity object (works for both single stat and array of stats)
+        // Create the activity object
         const newActivity = {
             id: activityId,
             date: timestamp,
             activity,
             category: categoryId,
-            stat: stats, // This can be a string or string[] 
+            stat: stats,
             points
         };
 
         // Add the new activity to the log
         setActivityLog((prev: any) => [...prev, newActivity]);
 
-        // Update each affected stat's value in the character sheet
-        if (Array.isArray(stats)) {
-            // Update multiple stats
-            stats.forEach(statName => {
-                // Update stat using the existing updateStat function
-                updateStat(categoryId, statName, points);
+        // If stats array is empty or only contains category name, update the category score directly
+        if (Array.isArray(stats) && stats.length === 0 ||
+            (Array.isArray(stats) && stats.length === 1 && stats[0] === characterSheet.categories[categoryId].name)) {
+            // Update category score directly
+            setCharacterSheet(prevSheet => {
+                const newSheet = JSON.parse(JSON.stringify(prevSheet)) as CharacterSheet;
+                const categoryObj = newSheet.categories[categoryId];
+                if (!categoryObj) return prevSheet;
+
+                // Just update the overall score
+                categoryObj.score += points;
+
+                return newSheet;
             });
         } else {
-            // Handle single stat (for backward compatibility)
-            updateStat(categoryId, stats, points);
+            // Update individual stats as before
+            if (Array.isArray(stats)) {
+                stats.forEach(statName => {
+                    updateStat(categoryId, statName, points);
+                });
+            } else {
+                updateStat(categoryId, stats, points);
+            }
         }
     };
-
 
     // Add a new category
     const addCategory = (category: Omit<StatCategory, 'id'>): string => {
@@ -243,7 +254,8 @@ export const CharacterProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     // Edit an existing activity
-    const editActivity = (id: string, updates: Partial<ActivityLog>) => {
+    // Edit an existing activity
+    const editActivity = (id: string, updates: Partial<Omit<ActivityLog, 'stat'> & { stat?: string | string[] }>) => {
         setActivityLog(prevLog => {
             const activityIndex = prevLog.findIndex(a => a.id === id);
             if (activityIndex === -1) return prevLog;
@@ -258,10 +270,28 @@ export const CharacterProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                     : [originalActivity.stat];
                 const oldPoints = originalActivity.points;
 
-                // Remove old stat points
-                oldStats.forEach(statName => {
-                    updateStat(originalActivity.category, statName, -oldPoints);
-                });
+                // Check if old stats were specific attributes or just the category
+                const wasOverallCategory = oldStats.length === 1 &&
+                    oldStats[0] === characterSheet.categories[originalActivity.category]?.name;
+
+                if (!wasOverallCategory) {
+                    // Remove old stat points from individual stats
+                    oldStats.forEach(statName => {
+                        updateStat(originalActivity.category, statName, -oldPoints);
+                    });
+                } else {
+                    // Remove points from overall category score directly
+                    setCharacterSheet(prevSheet => {
+                        const newSheet = JSON.parse(JSON.stringify(prevSheet)) as CharacterSheet;
+                        const categoryObj = newSheet.categories[originalActivity.category];
+                        if (!categoryObj) return prevSheet;
+
+                        // Subtract the old points from overall score
+                        categoryObj.score -= oldPoints;
+
+                        return newSheet;
+                    });
+                }
 
                 // Add new stat points if we have them
                 const newStats = updates.stat !== undefined
@@ -269,9 +299,28 @@ export const CharacterProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                     : oldStats;
                 const newPoints = updates.points !== undefined ? updates.points : oldPoints;
 
-                newStats.forEach(statName => {
-                    updateStat(originalActivity.category, statName, newPoints);
-                });
+                // Check if new stats are specific attributes or just the category
+                const isOverallCategory = newStats.length === 0 ||
+                    (newStats.length === 1 && newStats[0] === characterSheet.categories[originalActivity.category]?.name);
+
+                if (!isOverallCategory) {
+                    // Update individual stats
+                    newStats.forEach(statName => {
+                        updateStat(originalActivity.category, statName, newPoints);
+                    });
+                } else {
+                    // Update overall category score directly
+                    setCharacterSheet(prevSheet => {
+                        const newSheet = JSON.parse(JSON.stringify(prevSheet)) as CharacterSheet;
+                        const categoryObj = newSheet.categories[originalActivity.category];
+                        if (!categoryObj) return prevSheet;
+
+                        // Add the new points to overall score
+                        categoryObj.score += newPoints;
+
+                        return newSheet;
+                    });
+                }
             }
 
             // Update the activity with the new data
@@ -283,7 +332,6 @@ export const CharacterProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             return updatedLog;
         });
     };
-
     // Delete an activity
     const deleteActivity = (id: string) => {
         setActivityLog(prevLog => prevLog.filter(activity => activity.id !== id));

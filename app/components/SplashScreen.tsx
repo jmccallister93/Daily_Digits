@@ -1,6 +1,6 @@
 // app/components/SplashScreen.tsx
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing, Image } from 'react-native';
 import { theme } from '../../theme';
 
 interface SplashScreenProps {
@@ -34,14 +34,23 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ message = 'Loading...' }) =
     return (
         <View style={styles.container}>
             <View style={styles.content}>
-                <Animated.Text
+                {/* App Icon with animation */}
+                <Animated.View
                     style={[
-                        styles.title,
                         { transform: [{ scale: pulseAnim }] }
                     ]}
                 >
-                    Daily Digits
-                </Animated.Text>
+                    <Image
+                        source={require('../../assets/icon.png')}
+                        style={styles.icon}
+                        resizeMode="contain"
+                    />
+                </Animated.View>
+
+                {/* App Title */}
+                <Text style={styles.title}>Daily Digits</Text>
+
+                {/* Loading Message */}
                 <Text style={styles.message}>{message}</Text>
             </View>
         </View>
@@ -57,6 +66,11 @@ const styles = StyleSheet.create({
     },
     content: {
         alignItems: 'center',
+    },
+    icon: {
+        width: 120,
+        height: 120,
+        marginBottom: theme.spacing.md,
     },
     title: {
         fontSize: 36,

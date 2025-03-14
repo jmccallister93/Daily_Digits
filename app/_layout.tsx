@@ -1,12 +1,14 @@
 // layout.tsx
-import { Tabs } from "expo-router";
+import { router, Tabs } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { theme } from "../theme";
 import { CharacterProvider } from "./context/CharacterContext";
 import { View } from "react-native";
 import { DecayTimerProvider } from "./context/DecayTimerContext";
 
+
 export default function Layout() {
+
     return (
         <CharacterProvider>
             <DecayTimerProvider>
@@ -111,6 +113,30 @@ export default function Layout() {
                         options={{
                             //tabBarButton: () => null,
                             href: null,
+                            headerShown: false
+                        }}
+                    />
+                    <Tabs.Screen
+                        name="stats/[category]"  // This is the important addition
+                        options={{
+                            href: null,
+                            // tabBarButton: () => null,
+                            headerShown: false
+                        }}
+                    />
+                    <Tabs.Screen
+                        name="stats/index"  // This is the important addition
+                        options={{
+                            href: null,
+                            // tabBarButton: () => null,
+                            headerShown: false
+                        }}
+                    />
+                    <Tabs.Screen
+                        name="stats/attributes/[id]"  // This is the important addition
+                        options={{
+                            href: null,
+                            // tabBarButton: () => null,
                             headerShown: false
                         }}
                     />

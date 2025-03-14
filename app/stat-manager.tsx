@@ -104,7 +104,7 @@ export default function CategoryManager() {
     const [categoryDescription, setCategoryDescription] = useState('');
     const [categoryIcon, setCategoryIcon] = useState('🎯');
     const [categoryGradient, setCategoryGradient] = useState<[string, string]>(['#6366F1', '#8B5CF6']);
-    const [initialScore, setInitialScore] = useState('10');
+    const [initialScore, setInitialScore] = useState('0');
     const [categoryStats, setCategoryStats] = useState<Stat[]>([]);
 
     // For attribute editing
@@ -148,7 +148,7 @@ export default function CategoryManager() {
         setCategoryDescription('');
         setCategoryIcon('🎯');
         setCategoryGradient(['#6366F1', '#8B5CF6']);
-        setInitialScore('10');
+        setInitialScore('0');
         setCategoryStats([]);
         setEditingCategory(null);
         setModalVisible(false);
@@ -225,42 +225,7 @@ export default function CategoryManager() {
         setDecayEnabled(false);
         setAttributeModalVisible(true);
     };
-    // const handleDecayToggle = (value: boolean) => {
-    //     setDecayEnabled(value);
 
-    //     if (value && !editingCategory) {
-    //         // When enabling decay for a new attribute in a new category, 
-    //         // store the settings in pendingDecaySettings
-    //         if (attributeName) {
-    //             const points = parseInt(decayPoints, 10) || 1;
-    //             const timeValue = parseInt(decayTimeValue, 10) || 3;
-
-    //             // Check if we already have a pending setting for this attribute
-    //             const existingIndex = pendingDecaySettings.findIndex(
-    //                 s => s.statName === attributeName
-    //             );
-
-    //             const newSetting = {
-    //                 categoryId: editingCategory || '', // Will be updated when category is saved
-    //                 statName: attributeName,
-    //                 points: points,
-    //                 timeValue: timeValue,
-    //                 timeUnit: timeUnit,
-    //                 enabled: true
-    //             };
-
-    //             if (existingIndex >= 0) {
-    //                 // Update existing setting
-    //                 const updatedSettings = [...pendingDecaySettings];
-    //                 updatedSettings[existingIndex] = newSetting;
-    //                 setPendingDecaySettings(updatedSettings);
-    //             } else {
-    //                 // Add new setting
-    //                 setPendingDecaySettings([...pendingDecaySettings, newSetting]);
-    //             }
-    //         }
-    //     }
-    // };
     // Open modal to edit an existing attribute
     const handleEditAttribute = (index: number) => {
         const attribute = categoryStats[index];
@@ -392,7 +357,7 @@ export default function CategoryManager() {
             return;
         }
 
-        const scoreNum = parseInt(initialScore, 10) || 10;
+        const scoreNum = parseInt(initialScore, 10) || 0;
         let savedCategoryId = editingCategory;
 
         if (editingCategory) {
@@ -456,8 +421,9 @@ export default function CategoryManager() {
         // Navigate to the category page using the ID
         if (savedCategoryId) {
             setTimeout(() => {
-                router.navigate({
-                    pathname: `/stats/${savedCategoryId}`,
+                router.replace({
+                    // pathname: `/stats/${savedCategoryId}`,
+                    pathname: `/stat-manager`,
                     params: { categoryId: savedCategoryId }
                 });
             }, 100);
@@ -671,7 +637,7 @@ export default function CategoryManager() {
                                 value={initialScore}
                                 onChangeText={setInitialScore}
                                 keyboardType="number-pad"
-                                placeholder="10"
+                                placeholder="0"
                                 placeholderTextColor={theme.colorTextLight}
                             />
 
@@ -777,7 +743,7 @@ export default function CategoryManager() {
                                         </Text>
                                     </View>
                                     <View style={styles.previewScoreContainer}>
-                                        <Text style={styles.previewScore}>{initialScore || '10'}</Text>
+                                        <Text style={styles.previewScore}>{initialScore || '0'}</Text>
                                     </View>
                                 </LinearGradient>
                             </View>

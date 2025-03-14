@@ -27,6 +27,10 @@
       },
       "package": "com.topshelf13.daily_digits"
     },
+    "androidStatusBar": {
+      "backgroundColor": "#000000",
+      "barStyle": "light-content"
+    },
     "web": {
       "favicon": "./assets/favicon.png"
     },
